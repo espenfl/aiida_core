@@ -7,13 +7,15 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import logging
 import signal
 from functools import partial
 
 from aiida.common.log import configure_logging
-from aiida.daemon.client import DaemonClient
+from aiida.daemon.client import get_daemon_client
 from aiida.work.rmq import get_rmq_config
 from aiida.work import DaemonRunner, set_runner
 
@@ -27,10 +29,14 @@ def start_daemon():
     """
     Start a daemon runner for the currently configured profile
     """
-    daemon_client = DaemonClient()
+    daemon_client = get_daemon_client()
     configure_logging(daemon=True, daemon_log_file=daemon_client.daemon_log_file)
 
-    runner = DaemonRunner(rmq_config=get_rmq_config(), rmq_submit=False)
+    try:
+        runner = DaemonRunner(rmq_config=get_rmq_config(), rmq_submit=False)
+    except Exception as exception:
+        logger.exception('daemon runner failed to start')
+        raise
 
     def shutdown_daemon(num, frame):
         logger.info('Received signal to shut down the daemon runner')

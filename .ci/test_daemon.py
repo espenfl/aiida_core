@@ -7,6 +7,7 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
 from __future__ import absolute_import
 from __future__ import print_function
 import os
@@ -18,11 +19,12 @@ from six.moves import range
 
 from aiida.common.exceptions import NotExistent
 from aiida.common.caching import enable_caching
-from aiida.daemon.client import DaemonClient
-from aiida.orm import DataFactory
+from aiida.daemon.client import get_daemon_client
+from aiida.orm import Code, CalculationFactory, DataFactory
 from aiida.orm.data.int import Int
 from aiida.orm.data.str import Str
 from aiida.orm.data.list import List
+from aiida.orm.data.structure import StructureData
 from aiida.orm.calculation import JobCalculation
 from aiida.work.launch import run_get_node, submit
 from aiida.work.persistence import ObjectLoader
@@ -41,7 +43,7 @@ number_workchains = 8 # Number of workchains to submit
 
 
 def print_daemon_log():
-    daemon_client = DaemonClient()
+    daemon_client = get_daemon_client()
     daemon_log = daemon_client.daemon_log_file
 
     print("Output of 'cat {}':".format(daemon_log))
@@ -73,8 +75,8 @@ def print_logshow(pk):
             ["verdi", "calculation", "logshow", "{}".format(pk)],
             stderr=subprocess.STDOUT,
         ))
-    except subprocess.CalledProcessError as e2:
-        print("Note: the command failed, message: {}".format(e))
+    except subprocess.CalledProcessError as exception:
+        print("Note: the command failed, message: {}".format(exception))
 
 
 def validate_calculations(expected_results):

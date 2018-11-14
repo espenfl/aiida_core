@@ -8,6 +8,8 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 """Transport interface."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 from abc import ABCMeta
 import os
@@ -61,15 +63,16 @@ class Transport(object):
 
         This object can be used in nested `with` statements and the connection
         will only be opened once and closed when the final `with` scope
-        finishes e.g.:
-        >>> t = Transport()
-        >>> with t:
-        >>>     # Connection is now open..
-        >>>     with t:
-        >>>         # ..still open..
-        >>>         pass
-        >>>     # ..still open..
-        >>> # ...closed
+        finishes e.g.::
+
+            t = Transport()
+            with t:
+                # Connection is now open..
+                with t:
+                    # ..still open..
+                    pass
+                # ..still open..
+            # ...closed
 
         """
         # Keep track of how many times enter has been called
@@ -248,37 +251,45 @@ class Transport(object):
         """
         raise NotImplementedError
 
-    def copy(self, remotesource, remotedestination, *args, **kwargs):
+    def copy(self, remotesource, remotedestination, dereference=False, recursive=True):
         """
         Copy a file or a directory from remote source to remote destination
         (On the same remote machine)
 
         :param str remotesource: path of the remote source directory / file
         :param str remotedestination: path of the remote destination directory / file
+        :param dereference: if True copy the contents of any symlinks found, otherwise copy the symlinks themselves
+        :type dereference: bool
+        :param recursive: if True copy directories recursively, otherwise only copy the specified file(s)
+        :type recursive: bool
 
         :raises: IOError, if one of src or dst does not exist
         """
         raise NotImplementedError
 
-    def copyfile(self, remotesource, remotedestination, *args, **kwargs):
+    def copyfile(self, remotesource, remotedestination, dereference=False):
         """
         Copy a file from remote source to remote destination
         (On the same remote machine)
 
         :param str remotesource: path of the remote source directory / file
         :param str remotedestination: path of the remote destination directory / file
+        :param dereference: if True copy the contents of any symlinks found, otherwise copy the symlinks themselves
+        :type dereference: bool
 
         :raises IOError: if one of src or dst does not exist
         """
         raise NotImplementedError
 
-    def copytree(self, remotesource, remotedestination, *args, **kwargs):
+    def copytree(self, remotesource, remotedestination, dereference=False):
         """
         Copy a folder from remote source to remote destination
         (On the same remote machine)
 
         :param str remotesource: path of the remote source directory / file
         :param str remotedestination: path of the remote destination directory / file
+        :param dereference: if True copy the contents of any symlinks found, otherwise copy the symlinks themselves
+        :type dereference: bool
 
         :raise IOError: if one of src or dst does not exist
         """

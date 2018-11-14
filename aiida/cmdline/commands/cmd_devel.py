@@ -8,6 +8,8 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 """`verdi devel` commands."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import click
 
@@ -46,6 +48,7 @@ def get_valid_test_paths():
         'aiida.cmdline.utils',
         'aiida.cmdline.params.types',
         'aiida.cmdline.params.options',
+        'aiida.tools.dbimporters.plugins',
     ]
 
     valid_test_paths = {}

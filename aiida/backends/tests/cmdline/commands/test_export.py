@@ -1,5 +1,15 @@
 # -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA team. All rights reserved.                     #
+# This file is part of the AiiDA code.                                    #
+#                                                                         #
+# The code is hosted on GitHub at https://github.com/aiidateam/aiida_core #
+# For further information on the license, see the LICENSE.txt file        #
+# For further information please visit http://www.aiida.net               #
+###########################################################################
 """Tests for `verdi export`."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import errno
 import os
@@ -247,3 +257,27 @@ class TestVerdiExport(AiidaTestCase):
                     self.assertTrue(tarfile.is_tarfile(filename_output))
                 finally:
                     delete_temporary_file(filename_output)
+
+    def test_inspect(self):
+        """Test the functionality of `verdi export inspect`."""
+        archives = [
+            ('export_v0.1.aiida', '0.1'),
+            ('export_v0.2.aiida', '0.2'),
+            ('export_v0.3.aiida', '0.3'),
+        ]
+
+        for archive, version_number in archives:
+
+            filename_input = get_archive_file(archive)
+
+            # Testing the options that will print the meta data and data respectively
+            for option in ['-m', '-d']:
+                options = [option, filename_input]
+                result = self.cli_runner.invoke(cmd_export.inspect, options)
+                self.assertIsNone(result.exception)
+
+            # Test the --version option which should print the archive format version
+            options = ['--version', filename_input]
+            result = self.cli_runner.invoke(cmd_export.inspect, options)
+            self.assertIsNone(result.exception)
+            self.assertEquals(result.output.strip(), version_number)

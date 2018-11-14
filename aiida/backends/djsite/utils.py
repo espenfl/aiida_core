@@ -12,6 +12,8 @@ This modules contains a number of utility functions specific to the
 Django backend.
 """
 
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import os
 import django
@@ -59,7 +61,7 @@ def get_log_messages(obj):
         which the log message was issued, as well as additional 'metadata'
     """
     from aiida.backends.djsite.db.models import DbLog
-    import json
+    import aiida.utils.json as json
 
     extra = get_dblogger_extra(obj)
 

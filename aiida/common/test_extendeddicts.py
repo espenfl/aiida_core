@@ -7,6 +7,8 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import copy
 import unittest
@@ -203,7 +205,7 @@ class TestAttributeDictSerialize(unittest.TestCase):
     """
 
     def test_json(self):
-        import json
+        import aiida.utils.json as json
 
         d1 = AttributeDict({'x': 1, 'y': 2})
         d2 = json.loads(json.dumps(d1))
@@ -212,7 +214,7 @@ class TestAttributeDictSerialize(unittest.TestCase):
         self.assertEquals(d1, d2)
 
     def test_json_recursive(self):
-        import json
+        import aiida.utils.json as json
 
         d1 = AttributeDict({'x': 1, 'y': 2, 'z': AttributeDict({'w': 4})})
         d2 = json.loads(json.dumps(d1))

@@ -9,6 +9,7 @@
 ###########################################################################
 
 
+from __future__ import division
 from __future__ import absolute_import
 from __future__ import print_function
 try:
@@ -20,7 +21,7 @@ try:
     json_dumps = partial(json.dumps, double_precision=15)
     json_loads = partial(json.loads, precise_float=True)
 except ImportError:
-    import json
+    import aiida.utils.json as json
 
     json_dumps = json.dumps
     json_loads = json.loads
@@ -73,7 +74,7 @@ def reset_session(config):
         ).format(sep=':' if config['AIIDADB_PORT'] else '', **config)
 
     sa.engine = create_engine(engine_url, json_serializer=dumps_json,
-                              json_deserializer=loads_json)
+                              json_deserializer=loads_json, encoding='utf-8')
     sa.scopedsessionclass = scoped_session(sessionmaker(bind=sa.engine,
                                                         expire_on_commit=True))
     register_after_fork(sa.engine, recreate_after_fork)

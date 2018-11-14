@@ -9,12 +9,19 @@
 ###########################################################################
 # pylint: disable=too-many-arguments
 """`verdi export` command."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
+
+import io
+
 import click
+import tabulate
 
 from aiida.cmdline.commands.cmd_verdi import verdi
 from aiida.cmdline.params import arguments
 from aiida.cmdline.params import options
+from aiida.cmdline.utils import decorators
 from aiida.cmdline.utils import echo
 from aiida.common.exceptions import DanglingLinkError
 
@@ -23,6 +30,35 @@ from aiida.common.exceptions import DanglingLinkError
 def verdi_export():
     """Create and manage export archives."""
     pass
+
+
+@verdi_export.command('inspect')
+@click.argument('archive', nargs=1, type=click.Path(exists=True, readable=True))
+@click.option('-v', '--version', is_flag=True, help='Print the archive format version and exit.')
+@click.option('-d', '--data', is_flag=True, help='Print the data contents and exit.')
+@click.option('-m', '--meta-data', is_flag=True, help='Print the meta data contents and exit.')
+@decorators.with_dbenv()
+def inspect(archive, version, data, meta_data):
+    """
+    Inspect the contents of an exported archive without importing the content.
+
+    By default a summary of the archive contents will be printed. The various options can be used to
+    change exactly what information is displayed.
+    """
+    from aiida.common.archive import Archive
+
+    with Archive(archive) as archive_object:
+        if version:
+            echo.echo(archive_object.version_format)
+        elif data:
+            echo.echo_dictionary(archive_object.data)
+        elif meta_data:
+            echo.echo_dictionary(archive_object.meta_data)
+        else:
+            info = archive_object.get_info()
+            data = sorted([(k.capitalize(), v) for k, v in info.items()])
+            data.extend(sorted([(k.capitalize(), v) for k, v in archive_object.get_data_statistics().items()]))
+            echo.echo(tabulate.tabulate(data))
 
 
 @verdi_export.command('create')
@@ -34,30 +70,22 @@ def verdi_export():
 @options.ARCHIVE_FORMAT()
 @options.FORCE(help='overwrite output file if it already exists')
 @click.option(
-    '-i',
-    '--input-forward',
-    is_flag=True,
+    '--input-forward/--no-input-forward',
     default=False,
     show_default=True,
     help='Follow forward INPUT links (recursively) when calculating the node set to export.')
 @click.option(
-    '-c',
-    '--create-reversed',
-    is_flag=True,
+    '--create-reversed/--no-create-reversed',
     default=True,
     show_default=True,
     help='Follow reverse CREATE links (recursively) when calculating the node set to export.')
 @click.option(
-    '-r',
-    '--return-reversed',
-    is_flag=True,
+    '--return-reversed/--no-return-reversed',
     default=False,
     show_default=True,
     help='Follow reverse RETURN links (recursively) when calculating the node set to export.')
 @click.option(
-    '-x',
-    '--call-reversed',
-    is_flag=True,
+    '--call-reversed/--no-call-reversed',
     default=False,
     show_default=True,
     help='Follow reverse CALL links (recursively) when calculating the node set to export.')
@@ -102,6 +130,7 @@ def create(output_file, codes, computers, groups, nodes, input_forward, create_r
 
     try:
         export_function(entities, outfile=output_file, **kwargs)
+
     except IOError as exception:
         echo.echo_critical('failed to write the export archive file: {}'.format(exception))
     else:
@@ -120,11 +149,12 @@ def migrate(input_file, output_file, force, silent, archive_format):
     Migrate an existing export archive file to the most recent version of the export format
     """
     import os
-    import json
     import tarfile
     import zipfile
+
     from aiida.common.folders import SandboxFolder
     from aiida.common.archive import extract_zip, extract_tar
+    import aiida.utils.json as json
 
     if os.path.exists(output_file) and not force:
         echo.echo_critical('the output file already exists')
@@ -139,12 +169,12 @@ def migrate(input_file, output_file, force, silent, archive_format):
             echo.echo_critical('invalid file format, expected either a zip archive or gzipped tarball')
 
         try:
-            with open(folder.get_abs_path('data.json')) as handle:
-                data = json.load(handle)
-            with open(folder.get_abs_path('metadata.json')) as handle:
-                metadata = json.load(handle)
+            with io.open(folder.get_abs_path('data.json'), 'r', encoding='utf8') as fhandle:
+                data = json.load(fhandle)
+            with io.open(folder.get_abs_path('metadata.json'), 'r', encoding='utf8') as fhandle:
+                metadata = json.load(fhandle)
         except IOError:
-            echo.echo_critical('export archive does not contain the required file {}'.format(handle.filename))
+            echo.echo_critical('export archive does not contain the required file {}'.format(fhandle.filename))
 
         old_version = verify_metadata_version(metadata)
 
@@ -163,11 +193,11 @@ def migrate(input_file, output_file, force, silent, archive_format):
 
         new_version = verify_metadata_version(metadata)
 
-        with open(folder.get_abs_path('data.json'), 'w') as handle:
-            json.dump(data, handle)
+        with io.open(folder.get_abs_path('data.json'), 'wb') as fhandle:
+            json.dump(data, fhandle)
 
-        with open(folder.get_abs_path('metadata.json'), 'w') as handle:
-            json.dump(metadata, handle)
+        with io.open(folder.get_abs_path('metadata.json'), 'wb') as fhandle:
+            json.dump(metadata, fhandle)
 
         if archive_format == 'zip' or archive_format == 'zip-uncompressed':
             compression = zipfile.ZIP_DEFLATED if archive_format == 'zip' else zipfile.ZIP_STORED

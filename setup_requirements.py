@@ -8,6 +8,9 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 
+from __future__ import division
+from __future__ import print_function
+from __future__ import absolute_import
 install_requires = [
     'reentry==1.2.1',
     'python-dateutil==2.7.2',
@@ -38,18 +41,20 @@ install_requires = [
     'ete3==3.1.1',
     'uritools==2.1.0',
     'psycopg2-binary==2.7.4',
-    'paramiko==2.4.1',
+    'paramiko==2.4.2',
     'ecdsa==0.13',
-    'pika==0.11.2',
     'ipython>=4.0,<6.0',  # Version of ipython non enforced, because some still prefer version 4 rather than the latest
+    'pika==0.12.0',
     'plumpy==0.10.6',
     'kiwipy==0.2.1',
     'circus==0.14.0',
     'tornado==4.5.3',  # As of 2018/03/06 Tornado released v5.0 which breaks circus 0.14.0
+    'pyblake2==1.1.2; python_version<"3.6"',
     'chainmap; python_version<"3.5"',
     'pathlib2; python_version<"3.5"',
     'singledispatch>=3.4.0.3; python_version<"3.5"',
     'enum34==1.1.6; python_version<"3.5"',
+    'simplejson==3.16.0'
 ]
 
 extras_require = {
@@ -90,7 +95,8 @@ extras_require = {
         'pymatgen==2018.4.20',
         'ase==3.12.0',  # Updating breaks tests
         'PyMySQL==0.8.0',  # Required by ICSD tools
-        'PyCifRW==4.2.1',  # Updating breaks tests
+        "PyCifRW==4.2.1; python_version < '3'", # Does not support python3
+        "PyCifRW==4.4; python_version >= '3'", # Does not support python2
         'seekpath==1.8.1',
         'qe-tools==1.1.0',
     ],
@@ -100,10 +106,12 @@ extras_require = {
     ],
     # Requirements for testing
     'testing': [
+        'unittest2==1.1.0; python_version<"3.5"',
         'pgtest==1.1.0',
         'sqlalchemy-diff==0.1.3',
         'coverage==4.5.1',
-        'codecov==2.0.15'
+        'codecov==2.0.15',
+        'futures; python_version=="2.7"',
     ],
     'dev_precommit': [
         'pre-commit==1.8.2',

@@ -10,6 +10,7 @@
 """
 Plugin for direct execution.
 """
+from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 
@@ -148,8 +149,8 @@ class DirectScheduler(aiida.scheduler.Scheduler):
             except ValueError:
                 raise ValueError("max_memory_kb must be "
                                  "a positive integer (in kB)! It is instead '{}'"
-                                 "".format((job_tmpl.MaxMemoryKb)))
-            lines.append("ulimit -v {}".format(virtualMemoryKb))
+                                 "".format((job_tmpl.max_memory_kb)))
+            lines.append("ulimit -v {}".format(virtual_memory_kb))
         if not job_tmpl.import_sys_environment:
             lines.append("env --ignore-environment \\")
 

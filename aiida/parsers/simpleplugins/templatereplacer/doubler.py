@@ -7,7 +7,11 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
+import io
+
 from aiida.orm import CalculationFactory
 from aiida.parsers.parser import Parser
 from aiida.orm.data.parameter import ParameterData
@@ -82,7 +86,7 @@ class TemplatereplacerDoublerParser(Parser):
                         .format(retrieved_file, retrieved_temporary_folder))
                     return False, ()
 
-                with open(file_path, 'r') as handle:
+                with io.open(file_path, 'r', encoding='utf8') as handle:
                     parsed_value = handle.read().strip()
 
                 # We always strip the content of the file from whitespace to simplify testing for expected output

@@ -10,6 +10,8 @@
 """
 This allows to manage profiles from command line.
 """
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import click
 
@@ -44,7 +46,7 @@ def profile_list():
     else:
         echo.echo_info('default profile is highlighted and marked by the * symbol')
 
-    for profile in get_profiles_list():
+    for profile in sorted(get_profiles_list()):
         if profile == default_profile:
             color = 'green'
             symbol = '*'
@@ -62,7 +64,7 @@ def profile_show(profile):
     import tabulate
 
     headers = ('Attribute', 'Value')
-    data = sorted([(k.lower(), v) for k, v in profile.items()])
+    data = sorted([(k.lower(), v) for k, v in profile.config.items()])
     echo.echo(tabulate.tabulate(data, headers=headers))
 
 
@@ -107,7 +109,7 @@ def profile_delete(force, profiles):
         postgres.dbinfo["host"] = profile.get('AIIDADB_HOST')
         postgres.determine_setup()
 
-        import json
+        import aiida.utils.json as json
         echo.echo(json.dumps(postgres.dbinfo, indent=4))
 
         db_name = profile.get('AIIDADB_NAME', '')

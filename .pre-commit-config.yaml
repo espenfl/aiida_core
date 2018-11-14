@@ -28,6 +28,7 @@
         aiida/backends/djsite/db/migrations/0012_drop_dblock.py|
         aiida/backends/djsite/db/migrations/0013_django_1_8.py|
         aiida/backends/djsite/db/migrations/0014_add_node_uuid_unique_constraint.py|
+        aiida/backends/djsite/db/migrations/0015_invalidating_node_hash.py|
         aiida/backends/djsite/db/migrations/__init__.py|
         aiida/backends/djsite/db/models.py|
         aiida/backends/djsite/db/subtests/djangomigrations.py|
@@ -69,6 +70,7 @@
         aiida/backends/sqlalchemy/migrations/versions/e15ef2630a1b_initial_schema.py|
         aiida/backends/sqlalchemy/migrations/versions/f9a69de76a9a_delete_kombu_tables.py|
         aiida/backends/sqlalchemy/migrations/versions/62fe0d36de90_add_node_uuid_unique_constraint.py|
+        aiida/backends/sqlalchemy/migrations/versions/5d4d844852b6_invalidating_node_hash.py|
         aiida/backends/sqlalchemy/models/authinfo.py|
         aiida/backends/sqlalchemy/models/base.py|
         aiida/backends/sqlalchemy/models/comment.py|
@@ -143,7 +145,6 @@
         aiida/backends/tests/orm/utils/loaders.py|
         aiida/backends/tests/parsers.py|
         aiida/backends/tests/query.py|
-        aiida/backends/tests/restapi.py|
         aiida/backends/tests/tcodexporter.py|
         aiida/backends/tests/test_caching_config.py|
         aiida/backends/tests/test_plugin_loader.py|
@@ -186,7 +187,6 @@
         aiida/common/extendeddicts.py|
         aiida/common/folders.py|
         aiida/common/graph.py|
-        aiida/common/hashing.py|
         aiida/common/__init__.py|
         aiida/common/ipython/__init__.py|
         aiida/common/ipython/ipython_magics.py|
@@ -198,11 +198,9 @@
         aiida/common/profile.py|
         aiida/common/setup.py|
         aiida/common/test_extendeddicts.py|
-        aiida/common/test_folders.py|
         aiida/common/test_logging.py|
         aiida/common/test_utils.py|
         aiida/control/tests/test_postgres.py|
-        aiida/daemon/client.py|
         aiida/daemon/execmanager.py|
         aiida/daemon/runner.py|
         aiida/daemon/timestamps.py|
@@ -220,7 +218,6 @@
         aiida/orm/calculation/job/simpleplugins/templatereplacer.py|
         aiida/orm/calculation/work.py|
         aiida/orm/code.py|
-        aiida/orm/computer.py|
         aiida/orm/data/array/bands.py|
         aiida/orm/data/array/__init__.py|
         aiida/orm/data/array/kpoints.py|
@@ -312,26 +309,6 @@
         aiida/plugins/loader.py|
         aiida/plugins/registry.py|
         aiida/plugins/utils.py|
-        aiida/restapi/__init__.py|
-        aiida/restapi/api.py|
-        aiida/restapi/common/config.py|
-        aiida/restapi/common/__init__.py|
-        aiida/restapi/common/exceptions.py|
-        aiida/restapi/common/utils.py|
-        aiida/restapi/run_api.py|
-        aiida/restapi/translator/base.py|
-        aiida/restapi/translator/calculation/__init__.py|
-        aiida/restapi/translator/code.py|
-        aiida/restapi/translator/computer.py|
-        aiida/restapi/translator/data/bands.py|
-        aiida/restapi/translator/data/__init__.py|
-        aiida/restapi/translator/data/kpoints.py|
-        aiida/restapi/translator/data/structure.py|
-        aiida/restapi/translator/data/upf.py|
-        aiida/restapi/translator/group.py|
-        aiida/restapi/translator/__init__.py|
-        aiida/restapi/translator/node.py|
-        aiida/restapi/translator/user.py|
         aiida/scheduler/datastructures.py|
         aiida/scheduler/__init__.py|
         aiida/scheduler/plugins/direct.py|
@@ -371,7 +348,6 @@
         aiida/tools/dbimporters/plugins/oqmd.py|
         aiida/tools/dbimporters/plugins/pcod.py|
         aiida/tools/dbimporters/plugins/tcod.py|
-        aiida/tools/dbimporters/plugins/test_icsd.py|
         aiida/tools/__init__.py|
         aiida/transport/plugins/ssh.py|
         aiida/transport/plugins/test_all_plugins.py|
@@ -458,7 +434,11 @@
   sha: a234ce4e185cf77a55632888f1811d83b4ad9ef2
   hooks:
   - id: python-modernize
-    exclude: ^docs/
+    exclude: >
+      (?x)^(
+        docs/.*|
+        aiida/work/utils.py  # exclude because tornado WaitIterator.next() does not work with next(...)
+      )$
     args:
       - --write
       - --nobackups

@@ -10,7 +10,10 @@
 """
 Tests for TestTcodDbExporter
 """
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
+import io
 import unittest
 
 import six
@@ -20,42 +23,8 @@ from aiida.backends.testbase import AiidaTestCase
 from aiida.common.links import LinkType
 
 
-def has_nwchem_plugin():
-    from aiida.common.exceptions import MissingEntryPointError
-    from aiida.plugins.entry_point import load_entry_point
-    from aiida.tools.dbexporters.tcod_plugins import BaseTcodtranslator
-
-    try:
-        load_entry_point('aiida.tools.dbexporters.tcod_plugins', 'nwchem.nwcpymatgen')
-    except MissingEntryPointError:
-        return False
-
-    return True
-
-
-class FakeObject(object):
-    """
-    A wrapper for dictionary, which can be used instead of object.
-    Example use case: fake Calculation object ``calc``, having keys
-    ``inp`` and ``out`` to access also fake NodeInputManager and
-    NodeOutputManager.
-    """
-
-    def __init__(self, dictionary):
-        self._dictionary = dictionary
-
-    def __getattr__(self, name):
-        if isinstance(self._dictionary[name], dict):
-            return FakeObject(self._dictionary[name])
-        else:
-            return self._dictionary[name]
-
-
-@unittest.skipIf(six.PY3, "Broken on Python 3")
 class TestTcodDbExporter(AiidaTestCase):
-    """
-    Tests for TcodDbExporter class.
-    """
+    """Tests for TcodDbExporter class."""
     from aiida.orm.data.structure import has_ase, has_spglib
     from aiida.orm.data.cif import has_pycifrw
 
@@ -65,48 +34,51 @@ class TestTcodDbExporter(AiidaTestCase):
         encoding contents.
         """
         from aiida.tools.dbexporters.tcod import cif_encode_contents
-        self.assertEquals(cif_encode_contents('simple line')[1],
+        self.assertEquals(cif_encode_contents(b'simple line')[1],
                           None)
-        self.assertEquals(cif_encode_contents(' ;\n ;')[1],
+        self.assertEquals(cif_encode_contents(b' ;\n ;')[1],
                           None)
-        self.assertEquals(cif_encode_contents(';\n'),
-                          ('=3B\n', 'quoted-printable'))
-        self.assertEquals(cif_encode_contents('line\n;line'),
-                          ('line\n=3Bline', 'quoted-printable'))
-        self.assertEquals(cif_encode_contents('tabbed\ttext'),
-                          ('tabbed=09text', 'quoted-printable'))
-        self.assertEquals(cif_encode_contents('angstrom Å'),
-                          ('angstrom =C3=85', 'quoted-printable'))
-        self.assertEquals(cif_encode_contents('.'),
-                          ('=2E', 'quoted-printable'))
-        self.assertEquals(cif_encode_contents('?'),
-                          ('=3F', 'quoted-printable'))
-        self.assertEquals(cif_encode_contents('.?'), ('.?', None))
+        self.assertEquals(cif_encode_contents(b';\n'),
+                          (b'=3B\n', 'quoted-printable'))
+        self.assertEquals(cif_encode_contents(b'line\n;line'),
+                          (b'line\n=3Bline', 'quoted-printable'))
+        self.assertEquals(cif_encode_contents(b'tabbed\ttext'),
+                          (b'tabbed=09text', 'quoted-printable'))
+
+        # Angstrom symbol 'Å' will be encoded as two bytes, thus encoding it
+        # for CIF will produce two quoted-printable entities, '=C3' and '=85',
+        # one for each byte.
+
+        self.assertEquals(cif_encode_contents(u'angstrom Å'.encode('utf-8')),
+                          (b'angstrom =C3=85', 'quoted-printable'))
+        self.assertEquals(cif_encode_contents(b'.'),
+                          (b'=2E', 'quoted-printable'))
+        self.assertEquals(cif_encode_contents(b'?'),
+                          (b'=3F', 'quoted-printable'))
+        self.assertEquals(cif_encode_contents(b'.?'), (b'.?', None))
         # This one is particularly tricky: a long line is folded by the QP
         # and the semicolon sign becomes the first character on a new line.
         self.assertEquals(cif_encode_contents(
-            "Å{};a".format("".join("a" for i in range(0, 69)))),
-            ('=C3=85aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-             'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa=\n=3Ba',
+            u"Å{};a".format("".join("a" for i in range(0, 69))).encode('utf-8')),
+            (b'=C3=85aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+             b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa=\n=3Ba',
              'quoted-printable'))
-        self.assertEquals(cif_encode_contents('angstrom ÅÅÅ'),
-                          ('YW5nc3Ryb20gw4XDhcOF', 'base64'))
+        self.assertEquals(cif_encode_contents(u'angstrom ÅÅÅ'.encode('utf-8')),
+                          (b'YW5nc3Ryb20gw4XDhcOF', 'base64'))
         self.assertEquals(cif_encode_contents(
-            "".join("a" for i in range(0, 2048)))[1],
+            "".join("a" for i in range(0, 2048)).encode('utf-8'))[1],
                           None)
         self.assertEquals(cif_encode_contents(
-            "".join("a" for i in range(0, 2049)))[1],
+            "".join("a" for i in range(0, 2049)).encode('utf-8'))[1],
                           'quoted-printable')
-        self.assertEquals(cif_encode_contents('datatest')[1], None)
-        self.assertEquals(cif_encode_contents('data_test')[1], 'base64')
+        self.assertEquals(cif_encode_contents(b'datatest')[1], None)
+        self.assertEquals(cif_encode_contents(b'data_test')[1], 'base64')
 
     def test_collect_files(self):
-        """
-        Testing the collection of files from file tree.
-        """
+        """Testing the collection of files from file tree."""
         from aiida.tools.dbexporters.tcod import _collect_files
         from aiida.common.folders import SandboxFolder
-        from six.moves import cStringIO as StringIO
+        from six.moves import StringIO as StringIO
 
         sf = SandboxFolder()
         sf.get_subfolder('out', create=True)
@@ -115,45 +87,44 @@ class TestTcodDbExporter(AiidaTestCase):
         sf.get_subfolder('save/1', create=True)
         sf.get_subfolder('save/2', create=True)
 
-        f = StringIO("test")
+        f = StringIO(u"test")
         sf.create_file_from_filelike(f, 'aiida.in')
-        f = StringIO("test")
+        f = StringIO(u"test")
         sf.create_file_from_filelike(f, 'aiida.out')
-        f = StringIO("test")
+        f = StringIO(u"test")
         sf.create_file_from_filelike(f, '_aiidasubmit.sh')
-        f = StringIO("test")
+        f = StringIO(u"test")
         sf.create_file_from_filelike(f, '_.out')
-        f = StringIO("test")
+        f = StringIO(u"test")
         sf.create_file_from_filelike(f, 'out/out')
-        f = StringIO("test")
+        f = StringIO(u"test")
         sf.create_file_from_filelike(f, 'save/1/log.log')
 
         md5 = '098f6bcd4621d373cade4e832627b4f6'
         sha1 = 'a94a8fe5ccb19ba61c4c0873d391e987982fbbd3'
         self.assertEquals(
             _collect_files(sf.abspath),
-            [{'name': '_.out', 'contents': 'test', 'md5': md5,
+            [{'name': '_.out', 'contents': b'test', 'md5': md5,
               'sha1': sha1, 'type': 'file'},
-             {'name': '_aiidasubmit.sh', 'contents': 'test', 'md5': md5,
+             {'name': '_aiidasubmit.sh', 'contents': b'test', 'md5': md5,
               'sha1': sha1, 'type': 'file'},
-             {'name': 'aiida.in', 'contents': 'test', 'md5': md5,
+             {'name': 'aiida.in', 'contents': b'test', 'md5': md5,
               'sha1': sha1, 'type': 'file'},
-             {'name': 'aiida.out', 'contents': 'test', 'md5': md5,
+             {'name': 'aiida.out', 'contents': b'test', 'md5': md5,
               'sha1': sha1, 'type': 'file'},
              {'name': 'out/', 'type': 'folder'},
-             {'name': 'out/out', 'contents': 'test', 'md5': md5,
+             {'name': 'out/out', 'contents': b'test', 'md5': md5,
               'sha1': sha1, 'type': 'file'},
              {'name': 'pseudo/', 'type': 'folder'},
              {'name': 'save/', 'type': 'folder'},
              {'name': 'save/1/', 'type': 'folder'},
-             {'name': 'save/1/log.log', 'contents': 'test', 'md5': md5,
+             {'name': 'save/1/log.log', 'contents': b'test', 'md5': md5,
               'sha1': sha1, 'type': 'file'},
              {'name': 'save/2/', 'type': 'folder'}])
 
     @unittest.skipIf(not has_ase(), "Unable to import ase")
     @unittest.skipIf(not has_spglib(), "Unable to import spglib")
     @unittest.skipIf(not has_pycifrw(), "Unable to import PyCifRW")
-    @unittest.skipIf(not has_nwchem_plugin(), "NWChem plugin is not installed")
     def test_cif_structure_roundtrip(self):
         from aiida.tools.dbexporters.tcod import export_cif, export_values
         from aiida.orm import Code
@@ -166,8 +137,8 @@ class TestTcodDbExporter(AiidaTestCase):
         from aiida.common.datastructures import calc_states
         import tempfile
 
-        with tempfile.NamedTemporaryFile(mode='w+') as f:
-            f.write('''
+        with tempfile.NamedTemporaryFile(mode='w+') as tmpf:
+            tmpf.write('''
                 data_test
                 _cell_length_a    10
                 _cell_length_b    10
@@ -183,18 +154,18 @@ class TestTcodDbExporter(AiidaTestCase):
                 C 0 0 0
                 O 0.5 0.5 0.5
             ''')
-            f.flush()
-            a = CifData(file=f.name)
+            tmpf.flush()
+            a = CifData(file=tmpf.name)
 
         c = a._get_aiida_structure()
         c.store()
         pd = ParameterData()
 
         code = Code(local_executable='test.sh')
-        with tempfile.NamedTemporaryFile(mode='w+') as f:
-            f.write("#/bin/bash\n\necho test run\n")
-            f.flush()
-            code.add_path(f.name, 'test.sh')
+        with tempfile.NamedTemporaryFile(mode='w+') as tmpf:
+            tmpf.write("#/bin/bash\n\necho test run\n")
+            tmpf.flush()
+            code.add_path(tmpf.name, 'test.sh')
 
         code.store()
 
@@ -204,37 +175,36 @@ class TestTcodDbExporter(AiidaTestCase):
         calc.add_link_from(code, "code")
         calc.set_option('environment_variables', {'PATH': '/dev/null', 'USER': 'unknown'})
 
-        with tempfile.NamedTemporaryFile(mode='w+', prefix="Fe") as f:
-            f.write("<UPF version=\"2.0.1\">\nelement=\"Fe\"\n")
-            f.flush()
-            upf = UpfData(file=f.name)
+        with tempfile.NamedTemporaryFile(mode='w+', prefix="Fe") as tmpf:
+            tmpf.write("<UPF version=\"2.0.1\">\nelement=\"Fe\"\n")
+            tmpf.flush()
+            upf = UpfData(file=tmpf.name)
             upf.store()
             calc.add_link_from(upf, "upf")
 
-        with tempfile.NamedTemporaryFile(mode='w+') as f:
-            f.write("data_test")
-            f.flush()
-            cif = CifData(file=f.name)
+        with tempfile.NamedTemporaryFile(mode='w+') as tmpf:
+            tmpf.write("data_test")
+            tmpf.flush()
+            cif = CifData(file=tmpf.name)
             cif.store()
             calc.add_link_from(cif, "cif")
 
         calc.store()
-        calc._set_state(calc_states.SUBMITTING)
-        with SandboxFolder() as f:
-            calc._store_raw_input_folder(f.abspath)
+        calc._set_state(calc_states.TOSUBMIT)
+        with SandboxFolder() as fhandle:
+            calc._store_raw_input_folder(fhandle.abspath)
 
         fd = FolderData()
-        with open(fd._get_folder_pathsubfolder.get_abs_path(
-                calc._SCHED_OUTPUT_FILE), 'w') as f:
-            f.write("standard output")
-            f.flush()
+        with io.open(fd._get_folder_pathsubfolder.get_abs_path(
+                calc._SCHED_OUTPUT_FILE), 'w', encoding='utf8') as fhandle:
+            fhandle.write(u"standard output")
 
-        with open(fd._get_folder_pathsubfolder.get_abs_path(
-                calc._SCHED_ERROR_FILE), 'w') as f:
-            f.write("standard error")
-            f.flush()
+        with io.open(fd._get_folder_pathsubfolder.get_abs_path(
+                calc._SCHED_ERROR_FILE), 'w', encoding='utf8') as fhandle:
+            fhandle.write(u"standard error")
 
         fd.store()
+        calc._set_state(calc_states.PARSING)
         fd.add_link_from(calc, calc._get_linkname_retrieved(), LinkType.CREATE)
 
         pd.add_link_from(calc, "calc", LinkType.CREATE)
@@ -255,88 +225,16 @@ class TestTcodDbExporter(AiidaTestCase):
                           ['cd 1; ./_aiidasubmit.sh'])
 
 
-    @unittest.skipIf(not has_nwchem_plugin(), "NWChem plugin is not installed")
-    def test_nwcpymatgen_translation(self):
-        from .tcodexporter import FakeObject
-        from aiida.orm.data.parameter import ParameterData
-        from aiida.plugins.entry_point import load_entry_point
-        from aiida.tools.dbexporters.tcod import translate_calculation_specific_values
-
-        nwchem_plugin = load_entry_point('aiida.tools.dbexporters.tcod_plugins', 'nwchem.nwcpymatgen')
-
-        calc = FakeObject({
-            "out": {"output":
-                ParameterData(dict={
-                    "basis_set": {
-                        "H": {
-                            "description": "6-31g",
-                            "functions": "2",
-                            "shells": "2",
-                            "types": "2s"
-                        },
-                        "O": {
-                            "description": "6-31g",
-                            "functions": "9",
-                            "shells": "5",
-                            "types": "3s2p"
-                        }
-                    },
-                    "corrections": {},
-                    "energies": [
-                        -2057.99011937535
-                    ],
-                    "errors": [],
-                    "frequencies": None,
-                    "has_error": False,
-                    "job_type": "NWChem SCF Module"
-                }),
-                "job_info": ParameterData(dict={
-                    "0 permanent": ".",
-                    "0 scratch": ".",
-                    "argument  1": "aiida.in",
-                    "compiled": "Sun_Dec_22_04:02:59_2013",
-                    "data base": "./aiida.db",
-                    "date": "Mon May 11 17:10:07 2015",
-                    "ga revision": "10379",
-                    "global": "200.0 Mbytes (distinct from heap & stack)",
-                    "hardfail": "no",
-                    "heap": "100.0 Mbytes",
-                    "hostname": "theospc11",
-                    "input": "aiida.in",
-                    "nproc": "6",
-                    "nwchem branch": "6.3",
-                    "nwchem revision": "24277",
-                    "prefix": "aiida.",
-                    "program": "/usr/bin/nwchem",
-                    "source": "/build/buildd/nwchem-6.3+r1",
-                    "stack": "100.0 Mbytes",
-                    "status": "startup",
-                    "time left": "-1s",
-                    "total": "400.0 Mbytes",
-                    "verify": "yes",
-                })
-            }})
-        res = translate_calculation_specific_values(calc, nwchem_plugin)
-        self.assertEquals(res, {
-            '_tcod_software_package': 'NWChem',
-            '_tcod_software_package_version': '6.3',
-            '_tcod_software_package_compilation_date': '2013-12-22T04:02:59',
-            '_atom_type_symbol': ['H', 'O'],
-            '_dft_atom_basisset': ['6-31g', '6-31g'],
-            '_dft_atom_type_valence_configuration': ['2s', '3s2p'],
-        })
-
     @unittest.skipIf(not has_ase(), "Unable to import ase")
     @unittest.skipIf(not has_spglib(), "Unable to import spglib")
     @unittest.skipIf(not has_pycifrw(), "Unable to import PyCifRW")
-    @unittest.skipIf(not has_nwchem_plugin(), "NWChem plugin is not installed")
     def test_inline_export(self):
         from aiida.orm.data.cif import CifData
         from aiida.tools.dbexporters.tcod import export_values
         import tempfile
 
-        with tempfile.NamedTemporaryFile(mode='w+') as f:
-            f.write('''
+        with tempfile.NamedTemporaryFile(mode='w+') as tmpf:
+            tmpf.write('''
                 data_test
                 _cell_length_a    10
                 _cell_length_b    10
@@ -352,13 +250,13 @@ class TestTcodDbExporter(AiidaTestCase):
                 C 0 0 0
                 O 0.5 0.5 0.5
             ''')
-            f.flush()
-            a = CifData(file=f.name)
+            tmpf.flush()
+            a = CifData(file=tmpf.name)
 
         s = a._get_aiida_structure(store=True)
         val = export_values(s)
         script = val.first_block()['_tcod_file_contents'][1]
-        function = '_get_aiida_structure_ase_inline'
+        function = '_get_aiida_structure_pymatgen_inline'
         self.assertNotEqual(script.find(function), script.rfind(function))
 
     @unittest.skipIf(not has_ase(), "Unable to import ase")
@@ -384,6 +282,7 @@ class TestTcodDbExporter(AiidaTestCase):
         self.assertEqual(val['_atom_site_label'], ['Ba1', 'Ti1', 'O1'])
         self.assertEqual(val['_symmetry_space_group_name_H-M'], 'Pm-3m')
         self.assertEqual(val['_symmetry_space_group_name_Hall'], '-P 4 2 3')
+
 
     def test_cmdline_parameters(self):
         """
@@ -564,28 +463,34 @@ class TestTcodDbExporter(AiidaTestCase):
             self.assertEquals(text, decoded)
             self.assertEquals(text, decoded_universal)
 
-        check_ncr(self, '.', '&#46;')
-        check_ncr(self, '?', '&#63;')
-        check_ncr(self, ';\n', '&#59;\n')
-        check_ncr(self, 'line\n;line', 'line\n&#59;line')
-        check_ncr(self, 'tabbed\ttext', 'tabbed&#9;text')
-        check_ncr(self, 'angstrom Å', 'angstrom &#195;&#133;')
-        check_ncr(self, '<html>&#195;&#133;</html>',
-                 '<html>&#38;#195;&#38;#133;</html>')
+        check_ncr(self, b'.', b'&#46;')
+        check_ncr(self, b'?', b'&#63;')
+        check_ncr(self, b';\n', b'&#59;\n')
+        check_ncr(self, b'line\n;line', b'line\n&#59;line')
+        check_ncr(self, b'tabbed\ttext', b'tabbed&#9;text')
+        # Angstrom symbol 'Å' will be encoded as two bytes, thus encoding it
+        # for CIF will produce two NCR entities, '&#195;' and '&#133;', one for
+        # each byte.
+        check_ncr(self, u'angstrom Å'.encode('utf-8'), b'angstrom &#195;&#133;')
+        check_ncr(self, b'<html>&#195;&#133;</html>',
+                 b'<html>&#38;#195;&#38;#133;</html>')
 
-        check_quoted_printable(self, '.', '=2E')
-        check_quoted_printable(self, '?', '=3F')
-        check_quoted_printable(self, ';\n', '=3B\n')
-        check_quoted_printable(self, 'line\n;line', 'line\n=3Bline')
-        check_quoted_printable(self, 'tabbed\ttext', 'tabbed=09text')
-        check_quoted_printable(self, 'angstrom Å', 'angstrom =C3=85')
-        check_quoted_printable(self, 'line\rline\x00', 'line=0Dline=00')
+        check_quoted_printable(self, b'.', b'=2E')
+        check_quoted_printable(self, b'?', b'=3F')
+        check_quoted_printable(self, b';\n', b'=3B\n')
+        check_quoted_printable(self, b'line\n;line', b'line\n=3Bline')
+        check_quoted_printable(self, b'tabbed\ttext', b'tabbed=09text')
+        # Angstrom symbol 'Å' will be encoded as two bytes, thus encoding it
+        # for CIF will produce two quoted-printable entities, '=C3' and '=85',
+        # one for each byte.
+        check_quoted_printable(self, u'angstrom Å'.encode('utf-8'), b'angstrom =C3=85')
+        check_quoted_printable(self, b'line\rline\x00', b'line=0Dline=00')
         # This one is particularly tricky: a long line is folded by the QP
         # and the semicolon sign becomes the first character on a new line.
         check_quoted_printable(self,
-                              "Å{};a".format("".join("a" for i in range(0, 69))),
-                              '=C3=85aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-                              'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa=\n=3Ba')
+                              u"Å{};a".format("".join("a" for i in range(0, 69))).encode('utf-8'),
+                              b'=C3=85aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+                              b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaa=\n=3Ba')
 
-        check_base64(self, 'angstrom ÅÅÅ', 'YW5nc3Ryb20gw4XDhcOF')
-        check_gzip_base64(self, 'angstrom ÅÅÅ')
+        check_base64(self, u'angstrom ÅÅÅ'.encode('utf-8'), b'YW5nc3Ryb20gw4XDhcOF')
+        check_gzip_base64(self, u'angstrom ÅÅÅ'.encode('utf-8'))

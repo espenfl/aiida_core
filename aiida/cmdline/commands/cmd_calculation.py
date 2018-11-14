@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-# pylint: disable=protected-access,invalid-name,too-many-arguments,too-many-locals
 ###########################################################################
 # Copyright (c), The AiiDA team. All rights reserved.                     #
 # This file is part of the AiiDA code.                                    #
@@ -8,7 +7,10 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+# pylint: disable=protected-access,invalid-name,too-many-arguments,too-many-locals
 """`verdi calculation` commands."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import os
 
@@ -183,9 +185,9 @@ def calculation_logshow(calculations):
 @decorators.with_dbenv()
 def calculation_plugins(entry_point):
     """Print a list of registered calculation plugins or details of a specific calculation plugin."""
-    import json
     from aiida.common.exceptions import LoadingPluginFailed, MissingPluginError
     from aiida.plugins.entry_point import get_entry_point_names, load_entry_point
+    import aiida.utils.json as json
 
     if entry_point:
         try:

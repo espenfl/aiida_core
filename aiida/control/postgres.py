@@ -15,18 +15,21 @@ functionality from within python without knowing details about how postgres is
 installed by default on various systems. If the postgres setup is not the
 default installation, additional information needs to be provided.
 """
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 try:
     import subprocess32 as subprocess
 except ImportError:
     import subprocess
 
-import os
 import click
 
 _CREATE_USER_COMMAND = 'CREATE USER "{}" WITH PASSWORD \'{}\''
 _DROP_USER_COMMAND = 'DROP USER "{}"'
-_CREATE_DB_COMMAND = 'CREATE DATABASE "{}" OWNER "{}"'
+_CREATE_DB_COMMAND = ('CREATE DATABASE "{}" OWNER "{}" ENCODING \'UTF8\' '
+                      'LC_COLLATE=\'en_US.UTF-8\' LC_CTYPE=\'en_US.UTF-8\' '
+                      'TEMPLATE=template0')
 _DROP_DB_COMMAND = 'DROP DATABASE "{}"'
 _GRANT_PRIV_COMMAND = 'GRANT ALL PRIVILEGES ON DATABASE "{}" TO "{}"'
 _GET_USERS_COMMAND = "SELECT usename FROM pg_user WHERE usename='{}'"
@@ -128,7 +131,8 @@ class Postgres(object):
             self._no_setup_detected()
         elif not self.interactive and not self.quiet:
             click.echo(('Database setup not confirmed, (non-interactive). '
-                        'This may cause problems if the current user is not allowed to create databases.'))
+                        'This may cause problems if the current user is not '
+                        'allowed to create databases.'))
 
         return bool(self.pg_execute != _pg_execute_not_connected)
 
@@ -323,7 +327,7 @@ def _pg_execute_sh(command, user='postgres', **kwargs):
         options += '-p {}'.format(port)
 
     # Build command line
-    sudo_cmd = ['sudo', '-S']
+    sudo_cmd = ['sudo']
     non_interactive = kwargs.pop('non_interactive', None)
     if non_interactive:
         sudo_cmd += ['-n']
@@ -331,7 +335,7 @@ def _pg_execute_sh(command, user='postgres', **kwargs):
     from aiida.common.utils import escape_for_bash
     psql_cmd = ['psql {options} -tc {}'.format(escape_for_bash(command), options=options)]
     sudo_su_psql = sudo_cmd + su_cmd + psql_cmd
-    result = subprocess.check_output(sudo_su_psql, preexec_fn=os.setsid, **kwargs)
+    result = subprocess.check_output(sudo_su_psql, **kwargs)
 
     result = result.decode('utf-8').strip().split('\n')
     result = [i for i in result if i]

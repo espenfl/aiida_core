@@ -7,6 +7,7 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
 from __future__ import absolute_import
 from __future__ import print_function
 
@@ -197,10 +198,10 @@ class TrajectoryData(ArrayData):
                                     self.get_times(),
                                     self.get_velocities())
         # Should catch TypeErrors, ValueErrors, and KeyErrors for missing arrays
-        except Exception as exc:
+        except Exception as exception:
             raise ValidationError("The TrajectoryData did not validate. "
                                   "Error: {} with message {}".format(
-                type(e).__name__, exc))
+                type(exception).__name__, exception))
 
     @property
     def numsteps(self):
@@ -500,7 +501,7 @@ class TrajectoryData(ArrayData):
         Write the given trajectory to a string of format TCOD CIF.
         """
         from aiida.tools.dbexporters.tcod import export_cif
-        return export_cif(self,**kwargs).encode('utf-8'), {}
+        return export_cif(self,**kwargs), {}
 
     def _get_aiida_structure(self, store=False, **kwargs):
         """

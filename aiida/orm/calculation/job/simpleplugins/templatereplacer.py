@@ -7,6 +7,8 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 from aiida.common.exceptions import InputValidationError
 from aiida.common.datastructures import CalcInfo, CodeInfo
@@ -90,7 +92,7 @@ class TemplatereplacerCalculation(JobCalculation):
         :param inputdict: a dictionary with the input nodes, as they would
                 be returned by get_inputs_dict (with the Code!)
         """
-        from six.moves import cStringIO as StringIO
+        from six.moves import StringIO as StringIO
 
         from aiida.orm.data.singlefile import SinglefileData
         from aiida.orm.data.remote import RemoteData

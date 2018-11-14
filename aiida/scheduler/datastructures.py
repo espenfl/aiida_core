@@ -15,6 +15,7 @@ the data structure to be filled for job submission (JobTemplate), and
 the data structure that is returned when querying for jobs in the scheduler
 (JobInfo).
 """
+from __future__ import print_function
 from __future__ import division
 from __future__ import absolute_import
 from aiida.common.extendeddicts import (DefaultFieldsAttributeDict, Enumerate)
@@ -586,7 +587,7 @@ class JobInfo(DefaultFieldsAttributeDict):
         Serialise the current data
         :return: A serialised representation of the current data
         """
-        import json
+        import aiida.utils.json as json
 
         ser_data = {k: self.serialize_field(v, self._special_serializers.get(k, None)) for k, v in self.items()}
 
@@ -598,7 +599,7 @@ class JobInfo(DefaultFieldsAttributeDict):
         :param data: The data to load from
         :return: The value after loading
         """
-        import json
+        import aiida.utils.json as json
 
         deser_data = json.loads(data)
 

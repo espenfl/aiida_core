@@ -6,7 +6,8 @@ Flask-SQLAlchemy==2.3.2
 Flask==1.0.2
 Jinja2==2.10
 MarkupSafe==1.0
-PyCifRW==4.2.1
+PyCifRW==4.2.1; python_version < '3'
+PyCifRW==4.4; python_version >= '3'
 PyMySQL==0.8.0
 PyYAML==3.12
 Pygments==2.2.0
@@ -32,6 +33,7 @@ ecdsa==0.13
 enum34==1.1.6; python_version<"3.5"
 ete3==3.1.1
 flask-marshmallow==0.9.0
+futures; python_version=="2.7"
 ipython>=4.0,<6.0
 itsdangerous==0.24
 kiwipy==0.2.1
@@ -39,13 +41,14 @@ marshmallow-sqlalchemy==0.13.2
 meld3==1.0.2
 mock==2.0.0
 numpy==1.14.3
-paramiko==2.4.1
+paramiko==2.4.2
 passlib==1.7.1
 pathlib2; python_version<"3.5"
 pgtest==1.1.0
-pika==0.11.2
+pika==0.12.0
 plumpy==0.10.6
 psutil==5.4.5
+pyblake2==1.1.2; python_version<"3.6"
 pymatgen==2018.4.20
 pyparsing==2.2.0
 pytest-cov==2.5.1
@@ -57,6 +60,7 @@ pytz==2018.4
 qe-tools==1.1.0
 reentry==1.2.1
 seekpath==1.8.1
+simplejson==3.16.0
 singledispatch>=3.4.0.3; python_version<"3.5"
 six==1.11.0
 spglib==1.10.3.65
@@ -67,5 +71,6 @@ tabulate==0.8.2
 tornado==4.5.3
 tzlocal==1.5.1
 ujson==1.35
+unittest2==1.1.0; python_version<"3.5"
 uritools==2.1.0
 validate-email==1.3

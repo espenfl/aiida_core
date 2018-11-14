@@ -9,6 +9,8 @@
 ###########################################################################
 # pylint: disable=too-few-public-methods
 """Components to communicate tasks to RabbitMQ."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import collections
 
@@ -74,10 +76,10 @@ def get_rmq_prefix():
 
     :returns: string prefix for the RMQ communicators
     """
-    from aiida.common.profile import ProfileConfig
+    from aiida.common.profile import get_profile
 
-    profile_config = ProfileConfig()
-    prefix = profile_config.rmq_prefix
+    profile = get_profile()
+    prefix = profile.rmq_prefix
 
     return prefix
 

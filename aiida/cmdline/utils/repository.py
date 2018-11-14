@@ -1,6 +1,18 @@
 # -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA team. All rights reserved.                     #
+# This file is part of the AiiDA code.                                    #
+#                                                                         #
+# The code is hosted on GitHub at https://github.com/aiidateam/aiida_core #
+# For further information on the license, see the LICENSE.txt file        #
+# For further information please visit http://www.aiida.net               #
+###########################################################################
 """Utility functions for command line commands operating on the repository."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
+import io
+
 from aiida.cmdline.utils import echo
 
 
@@ -42,7 +54,7 @@ def cat_repo_files(node, path):
             raise ValueError("No file '{}' in the repo".format(path))
 
         absfname = fldr.get_abs_path(fname)
-        with open(absfname) as repofile:
+        with io.open(absfname, encoding='utf8') as repofile:
             for line in repofile:
                 sys.stdout.write(line)
 

@@ -7,6 +7,8 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import sys
 
@@ -331,9 +333,9 @@ def _deserialize_attribute(mainitem, subitems, sep, original_class=None,
     :return: the deserialized value
     :raise aiida.backends.djsite.db.models.DeserializationException: if an error occurs
     """
+    import aiida.utils.json as json
     from aiida.utils.timezone import (
         is_naive, make_aware, get_current_timezone)
-    import json
 
     from aiida.common import aiidalogger
 
@@ -727,8 +729,9 @@ class DbMultipleValueAttributeBaseClass(m.Model):
           responsibility to store such entries (typically with a Django
           bulk_create() call).
         """
-        import json
         import datetime
+        
+        import aiida.utils.json as json
         from aiida.utils.timezone import is_naive, make_aware, get_current_timezone
 
         if cls._subspecifier_field_name is None:
@@ -972,7 +975,7 @@ class DbMultipleValueAttributeBaseClass(m.Model):
                                               original_pk=self.subspecifier_pk)['attr']
         except DeserializationException as exc:
             exc = DbContentError(exc)
-            exc.original_exception = e
+            exc.original_exception = exc
             raise exc
 
     @classmethod
@@ -1111,7 +1114,7 @@ class DbAttributeBaseClass(DbMultipleValueAttributeBaseClass):
                                           original_pk=dbnodepk)
         except DeserializationException as exc:
             exc = DbContentError(exc)
-            exc.original_exception = e
+            exc.original_exception = exc
             raise exc
 
     @classmethod
@@ -1400,7 +1403,7 @@ class DbComputer(m.Model):
         return DjangoComputer.from_dbmodel(self, construct_backend())
 
     def _get_val_from_metadata(self, key):
-        import json
+        import aiida.utils.json as json
 
         try:
             metadata = json.loads(self.metadata)
@@ -1678,7 +1681,7 @@ class DbWorkflowData(m.Model):
     def set_value(self, arg):
         from aiida.orm.node import Node
         from aiida.common.datastructures import wf_data_value_types
-        import json
+        import aiida.utils.json as json
 
         try:
             if isinstance(arg, Node) or issubclass(arg.__class__, Node):
@@ -1695,7 +1698,8 @@ class DbWorkflowData(m.Model):
             six.reraise(ValueError, "Cannot set the parameter {}".format(self.name), sys.exc_info()[2])
 
     def get_value(self):
-        import json
+        import aiida.utils.json as json
+
         from aiida.common.datastructures import wf_data_value_types
 
         if self.value_type == wf_data_value_types.JSON:

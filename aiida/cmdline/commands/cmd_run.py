@@ -1,5 +1,15 @@
 # -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA team. All rights reserved.                     #
+# This file is part of the AiiDA code.                                    #
+#                                                                         #
+# The code is hosted on GitHub at https://github.com/aiidateam/aiida_core #
+# For further information on the license, see the LICENSE.txt file        #
+# For further information please visit http://www.aiida.net               #
+###########################################################################
 """`verdi run` command."""
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import contextlib
 import os
@@ -83,8 +93,12 @@ def run(scriptname, varargs, group, group_name, exclude, excludesubclasses, incl
         # Note: this is also set in the exec environment! This is the intended behavior
         autogroup.current_autogroup = aiida_verdilib_autogroup
 
+    # Initialize the variable here, otherwise we get UnboundLocalError in the finally clause if it fails to open
+    handle = None
+
     try:
-        handle = open(scriptname)
+        # Here we use a standard open and not io.open, as exec will later fail if passed a unicode type string.
+        handle = open(scriptname, 'r')
     except IOError:
         echo.echo_critical("Unable to load file '{}'".format(scriptname))
     else:
@@ -103,4 +117,5 @@ def run(scriptname, varargs, group, group_name, exclude, excludesubclasses, incl
             # Re-raise the exception to have the error code properly returned at the end
             raise
     finally:
-        handle.close()
+        if handle:
+            handle.close()

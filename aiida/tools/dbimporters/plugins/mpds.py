@@ -8,17 +8,18 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import copy
 import enum
-import json
 import os
 
 from six.moves import range
 import requests
 
 from aiida.tools.dbimporters.baseclasses import CifEntry, DbEntry, DbImporter, DbSearchResults
-
+import aiida.utils.json as json
 
 
 class ApiFormat(enum.Enum):
@@ -115,7 +116,7 @@ class MpdsDbImporter(DbImporter):
         return self._structures
 
     @property
-    def supported_keywords(self):
+    def get_supported_keywords(self):
         """
         Returns the list of all supported query keywords
 

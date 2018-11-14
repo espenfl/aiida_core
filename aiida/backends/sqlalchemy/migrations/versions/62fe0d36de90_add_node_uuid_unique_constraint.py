@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA team. All rights reserved.                     #
+# This file is part of the AiiDA code.                                    #
+#                                                                         #
+# The code is hosted on GitHub at https://github.com/aiidateam/aiida_core #
+# For further information on the license, see the LICENSE.txt file        #
+# For further information please visit http://www.aiida.net               #
+###########################################################################
 """Add a unique constraint on the UUID column of the Node model
 
 Revision ID: 62fe0d36de90
@@ -5,6 +14,7 @@ Revises: 59edaf8a8b79
 Create Date: 2018-07-02 17:50:42.929382
 
 """
+from __future__ import division
 from __future__ import absolute_import
 from __future__ import print_function
 from alembic import op

@@ -7,7 +7,11 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
+import io
+
 from aiida.orm import CalculationFactory
 from aiida.parsers.parser import Parser
 from aiida.orm.data.int import Int
@@ -84,7 +88,7 @@ class ArithmeticAddParser(Parser):
         is_successful = True
 
         try:
-            with open(filepath, 'r') as handle:
+            with io.open(filepath, 'r', encoding='utf8') as handle:
                 output = handle.read()
         except IOError:
             return False, None

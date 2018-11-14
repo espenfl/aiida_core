@@ -7,6 +7,8 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 from abc import ABCMeta, abstractmethod, abstractproperty
 
@@ -14,11 +16,8 @@ import os
 import logging
 import importlib
 import collections
-
-try:
-    import pathlib
-except ImportError:
-    import pathlib2 as pathlib
+import numbers
+import math
 
 import six
 
@@ -31,10 +30,9 @@ from aiida.common.links import LinkType
 from aiida.common.utils import abstractclassmethod
 from aiida.common.utils import combomethod, classproperty
 from aiida.plugins.loader import get_query_type_from_type_string, get_type_string_from_class
+from aiida.common.hashing import _HASH_EXTRA_KEY
 
 _NO_DEFAULT = tuple()
-_HASH_EXTRA_KEY = '_aiida_hash'
-
 
 def clean_value(value):
     """
@@ -54,13 +52,20 @@ def clean_value(value):
     # Must be imported in here to avoid recursive imports
     from aiida.orm.data import BaseType
 
+    def clean_builtin(val):
+        if isinstance(val, numbers.Real) and (math.isnan(val) or math.isinf(val)):
+            # see https://www.postgresql.org/docs/current/static/datatype-json.html#JSON-TYPE-MAPPING-TABLE
+            raise ValidationError("nan and inf/-inf can not be serialized to the database")
+
+        return val
+
     if isinstance(value, BaseType):
-        return value.value
-    elif isinstance(value, dict):
+        return clean_builtin(value.value)
+
+    if isinstance(value, dict):
         # Check dictionary before iterables
         return {k: clean_value(v) for k, v in value.items()}
-    elif (isinstance(value, collections.Iterable) and
-          not isinstance(value, six.string_types)):
+    if (isinstance(value, collections.Iterable) and not isinstance(value, six.string_types)):
         # list, tuple, ... but not a string
         # This should also properly take care of dealing with the
         # basedatatypes.List object
@@ -70,7 +75,8 @@ def clean_value(value):
     # itself - it's not super robust, but relies on duck typing
     # (e.g. if there is something that behaves like an integer
     # but is not an integer, I still accept it)
-    return value
+
+    return clean_builtin(value)
 
 
 class _AbstractNodeMeta(ABCMeta):
@@ -1837,13 +1843,14 @@ class AbstractNode(object):
         if not self._cacheable:
             return iter(())
 
-        from aiida.orm.querybuilder import QueryBuilder
-
         hash_ = self.get_hash()
-        if hash_:
-            qb = QueryBuilder()
-            qb.append(self.__class__, filters={'extras._aiida_hash': hash_}, project='*', subclassing=False)
-            same_nodes = (n[0] for n in qb.iterall())
+        if not hash_:
+            return iter(())
+
+        from aiida.orm.querybuilder import QueryBuilder
+        qb = QueryBuilder()
+        qb.append(self.__class__, filters={'extras._aiida_hash': hash_}, project='*', subclassing=False)
+        same_nodes = (n[0] for n in qb.iterall())
         return (n for n in same_nodes if n._is_valid_cache())
 
     def _is_valid_cache(self):

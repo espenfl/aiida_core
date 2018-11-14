@@ -1,8 +1,19 @@
 # -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (c), The AiiDA team. All rights reserved.                     #
+# This file is part of the AiiDA code.                                    #
+#                                                                         #
+# The code is hosted on GitHub at https://github.com/aiidateam/aiida_core #
+# For further information on the license, see the LICENSE.txt file        #
+# For further information please visit http://www.aiida.net               #
+###########################################################################
 """
 This module provides import functionality to all data types
 """
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
+import io
 
 from aiida.cmdline.utils import echo
 
@@ -22,7 +33,7 @@ def data_import_xyz(filename, **kwargs):
 
     echo.echo('importing XYZ-structure from: \n  {}'.format(abspath(filename)))
     filepath = abspath(filename)
-    with open(filepath) as fobj:
+    with io.open(filepath, encoding='utf8') as fobj:
         xyz_txt = fobj.read()
     new_structure = StructureData()
     # pylint: disable=protected-access

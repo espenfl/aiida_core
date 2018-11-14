@@ -12,6 +12,7 @@ This module defines the classes for structures and all related
 functions to operate on them.
 """
 
+from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 import itertools
@@ -1033,7 +1034,7 @@ class StructureData(Data):
         Write the given structure to a string of format TCOD CIF.
         """
         from aiida.tools.dbexporters.tcod import export_cif
-        return export_cif(self, **kwargs).encode('utf-8'), {}
+        return export_cif(self, **kwargs), {}
 
     def _prepare_chemdoodle(self, main_file_name=""):
         """
@@ -1041,7 +1042,8 @@ class StructureData(Data):
         """
         import numpy as np
         from itertools import product
-        import json
+        
+        import aiida.utils.json as json
 
         supercell_factors=[1, 1, 1]
 

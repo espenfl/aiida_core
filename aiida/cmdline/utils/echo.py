@@ -8,6 +8,8 @@
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
 """ Convenience functions for printing output from verdi commands """
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import enum
 import sys
@@ -129,7 +131,7 @@ def echo_deprecated(message, bold=False, nl=True, err=True, exit=False):
         sys.exit(ExitCode.DEPRECATED.value)
 
 
-def echo_dictionary(dictionary, fmt):
+def echo_dictionary(dictionary, fmt='json+date'):
     """
     Print the given dictionary to stdout in the given format
 
@@ -149,7 +151,7 @@ def echo_dictionary(dictionary, fmt):
 
 def _format_dictionary_json_date(dictionary):
     """Return a dictionary formatted as a string using the json format and converting dates to strings."""
-    import json
+    import aiida.utils.json as json
 
     def default_jsondump(data):
         """Function needed to decode datetimes, that would otherwise not be JSON-decodable."""
@@ -160,7 +162,7 @@ def _format_dictionary_json_date(dictionary):
 
         raise TypeError(repr(data) + ' is not JSON serializable')
 
-    return json.dumps(dictionary, indent=2, sort_keys=True, default=default_jsondump)
+    return json.dumps(dictionary, indent=4, sort_keys=True, default=default_jsondump)
 
 
 def is_stdout_redirected():

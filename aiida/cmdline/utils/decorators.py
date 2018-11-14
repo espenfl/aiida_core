@@ -19,6 +19,8 @@ Provides:
     code branch gets visited and possibly avoiding the overhead if not
 
 """
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 from contextlib import contextmanager
 from functools import wraps
@@ -141,9 +143,9 @@ def only_if_daemon_running(echo_function=echo.echo_critical, message=None):
         @wraps(function)
         def decorated_function(*args, **kwargs):
             """If daemon pid file is not found / empty, echo message and call decorated function."""
-            from aiida.daemon.client import DaemonClient
+            from aiida.daemon.client import get_daemon_client
 
-            daemon_client = DaemonClient()
+            daemon_client = get_daemon_client()
 
             if not daemon_client.get_daemon_pid():
                 echo_function(message)

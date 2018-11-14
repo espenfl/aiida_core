@@ -9,9 +9,11 @@
 ###########################################################################
 # Regroup Django's specific function needed by the command line.
 
+from __future__ import division
+from __future__ import print_function
 from __future__ import absolute_import
 import datetime
-import json
+import aiida.utils.json as json
 
 from django.db.models import Q
 

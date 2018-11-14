@@ -56,6 +56,7 @@ py:class  list
 py:class  object
 py:class  unittest.case.TestCase
 py:class  unittest.runner.TextTestRunner
+py:class  unittest2.case.TestCase
 py:meth   unittest.TestLoader.discover
 py:class  ABCMeta
 py:class  exceptions.Exception
@@ -66,6 +67,7 @@ py:class  Exception
 py:class  ValueError
 py:class  BaseException
 py:class  str
+py:class  bytes
 py:class  tuple
 py:class  int
 py:class  float
@@ -133,6 +135,7 @@ py:class  logging.Logger
 
 py:class  paramiko.proxy.ProxyCommand
 
+py:class  plumpy.futures.Future
 py:class  plumpy.processes.Process
 py:class  plumpy.process_comms.ProcessLauncher
 py:class  plumpy.process_spec.ProcessSpec
@@ -154,6 +157,7 @@ py:meth   plumpy.process_spec.ProcessSpec.expose_outputs
 py:class  kiwipy.futures.Future
 py:class  kiwipy.communications.TimeoutError
 
+py:class  tornado.ioloop.IOLoop
 py:class  tornado.concurrent.Future
 
 py:class  IPython.core.magic.Magics
