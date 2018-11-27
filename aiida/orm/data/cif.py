@@ -458,7 +458,7 @@ class CifData(SinglefileData):
         # structures
         struct_list = read(fileobj, index=':', format='cif', **kwargs)
         print(struct_list)
-        print(dir(struct_list[0]))
+        print(struct_list[0].get_tags())
         if index is None:
             # If index is explicitely set to None, the list is returned as such.
             return struct_list
