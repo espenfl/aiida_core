@@ -2149,6 +2149,7 @@ class Kind(object):
                 raise ValueError("Error using the aseatom object. Are you sure "
                                  "it is a ase.atom.Atom object? [Introspection says it is "
                                  "{}]".format(str(type(aseatom))))
+            print(aseatom.symbol, aseatom.tag)
             if aseatom.tag != 0:
                 print('setting automatic kind name')
                 print(aseatom.tag)
