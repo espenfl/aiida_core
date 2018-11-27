@@ -457,7 +457,8 @@ class CifData(SinglefileData):
         # the read function returns a list as a cif file might contain multiple
         # structures
         struct_list = read(fileobj, index=':', format='cif', **kwargs)
-
+        print(struct_list)
+        print(dir(struct_list[0]))
         if index is None:
             # If index is explicitely set to None, the list is returned as such.
             return struct_list

@@ -2151,11 +2151,12 @@ class Kind(object):
                                  "{}]".format(str(type(aseatom))))
             print(aseatom.symbol, aseatom.tag)
             if aseatom.tag != 0:
-                print('setting automatic kind name')
+                print('setting automatic kind name with tag')
                 print(aseatom.tag)
                 self.set_automatic_kind_name(tag=aseatom.tag)
                 self._internal_tag = aseatom.tag
             else:
+                print('setting automatic kind name without tag')
                 self.set_automatic_kind_name()
         else:
             if 'symbols' not in kwargs:
