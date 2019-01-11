@@ -363,21 +363,22 @@ def calculation_kill(calculations, force):
         warning = 'Are you sure you want to kill {} calculations?'.format(len(calculations))
         click.confirm(warning, abort=True)
 
-    with work.new_control_panel() as control_panel:
-        futures = []
-        for calculation in calculations:
-            try:
-                future = control_panel.kill_process(calculation)
-                futures.append((calculation, future))
-            except (work.RemoteException, work.DeliveryFailed) as exc:
-                echo.echo_error('Calculation<{}> killing failed {}'.format(calculation, exc))
+    controller = work.AiiDAManager.get_process_controller()
 
-        for future in futures:
-            result = control_panel._communicator.await(future[1])
-            if result:
-                echo.echo_success('Calculation<{}> successfully killed'.format(future[0]))
-            else:
-                echo.echo_error('Calculation<{}> killing failed {}'.format(future[0], result))
+    futures = []
+    for calculation in calculations:
+        try:
+            future = controller.kill_process(calculation)
+            futures.append((calculation, future))
+        except (work.RemoteException, work.DeliveryFailed) as exc:
+            echo.echo_error('Calculation<{}> killing failed {}'.format(calculation, exc))
+
+    for future in futures:
+        result = future.result()
+        if result:
+            echo.echo_success('Calculation<{}> successfully killed'.format(future[0]))
+        else:
+            echo.echo_error('Calculation<{}> killing failed {}'.format(future[0], result))
 
 
 @verdi_calculation.command('cleanworkdir')
@@ -396,9 +397,9 @@ def calculation_cleanworkdir(calculations, past_days, older_than, computers, for
     If both are specified, a logical AND is done between the two, i.e. the calculations that will be cleaned have been
     modified AFTER [-p option] days from now, but BEFORE [-o option] days from now.
     """
-    from aiida.orm.backend import construct_backend
     from aiida.orm.utils.loaders import ComputerEntityLoader, IdentifierType
     from aiida.orm.utils.remote import clean_remote, get_calculation_remote_paths
+    from aiida import orm
 
     if calculations:
         if (past_days is not None and older_than is not None):
@@ -418,14 +419,13 @@ def calculation_cleanworkdir(calculations, past_days, older_than, computers, for
         warning = 'Are you sure you want to clean the work directory of {} calculations?'.format(path_count)
         click.confirm(warning, abort=True)
 
-    backend = construct_backend()
-    user = backend.users.get_automatic_user()
+    user = orm.User.objects.get_default()
 
     for computer_uuid, paths in path_mapping.items():
 
         counter = 0
         computer = ComputerEntityLoader.load_entity(computer_uuid, identifier_type=IdentifierType.UUID)
-        transport = backend.authinfos.get(computer, user).get_transport()
+        transport = orm.AuthInfo.objects.get(dbcomputer_id=computer.id, aiidauser_id=user.id).get_transport()
 
         with transport:
             for path in paths:

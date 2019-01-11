@@ -11,63 +11,96 @@
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
+
+import datetime
+import subprocess
+import sys
+import time
+from concurrent.futures import Future
+
 from click.testing import CliRunner
+from tornado import gen
+import kiwipy
+import plumpy
 
 from aiida.backends.testbase import AiidaTestCase
 from aiida.cmdline.commands import cmd_process
-from aiida.work import runners, rmq, test_utils
-
-
-def get_result_lines(result):
-    return [e for e in result.output.split('\n') if e]
+from aiida.work import test_utils
+from aiida import work
 
 
 class TestVerdiProcess(AiidaTestCase):
     """Tests for `verdi process`."""
 
-    @classmethod
-    def setUpClass(cls, *args, **kwargs):
-        super(TestVerdiProcess, cls).setUpClass(*args, **kwargs)
-        rmq_config = rmq.get_rmq_config()
-
-        # These two need to share a common event loop otherwise the first will never send
-        # the message while the daemon is running listening to intercept
-        cls.runner = runners.Runner(rmq_config=rmq_config, rmq_submit=True, poll_interval=0.)
-
-        cls.daemon_runner = runners.DaemonRunner(rmq_config=rmq_config, rmq_submit=True, poll_interval=0.)
+    TEST_TIMEOUT = 5.
 
     def setUp(self):
         super(TestVerdiProcess, self).setUp()
+        from aiida.common.profile import get_profile
+        from aiida.daemon.client import DaemonClient
+
+        profile = get_profile()
+        self.daemon_client = DaemonClient(profile)
+        self.daemon_pid = subprocess.Popen(
+            self.daemon_client.cmd_string.split(), stderr=sys.stderr, stdout=sys.stdout).pid
+        self.runner = work.AiiDAManager.create_runner(rmq_submit=True)
         self.cli_runner = CliRunner()
+
+    def tearDown(self):
+        import os
+        import signal
+
+        os.kill(self.daemon_pid, signal.SIGTERM)
+        super(TestVerdiProcess, self).tearDown()
 
     def test_pause_play_kill(self):
         """
         Test the pause/play/kill commands
         """
-        from concurrent.futures import ThreadPoolExecutor
+        from aiida.orm import load_node
 
         calc = self.runner.submit(test_utils.WaitProcess)
-        executor = ThreadPoolExecutor(max_workers=1)
+        start_time = time.time()
+        while calc.process_state is not plumpy.ProcessState.WAITING:
+            if time.time() - start_time >= self.TEST_TIMEOUT:
+                self.fail('Timed out waiting for process to enter waiting state')
 
-        try:
-            _ = executor.submit(self.daemon_runner.start)
+        self.assertFalse(calc.paused)
+        result = self.cli_runner.invoke(cmd_process.process_pause, [str(calc.pk)])
+        self.assertIsNone(result.exception, result.exception)
 
-            self.assertFalse(calc.paused)
-            result = self.cli_runner.invoke(cmd_process.process_pause, [str(calc.pk)])
+        # We need to make sure that the process is picked up by the daemon and put in the Waiting state before we start
+        # running the CLI commands, so we add a broadcast subscriber for the state change, which when hit will set the
+        # future to True. This will be our signal that we can start testing
+        waiting_future = Future()
+        filters = kiwipy.BroadcastFilter(
+            lambda *args, **kwargs: waiting_future.set_result(True), sender=calc.pk, subject='state_changed.*.waiting')
+        self.runner.communicator.add_broadcast_subscriber(filters)
 
-            self.assertTrue(calc.paused)
-            self.assertIsNone(result.exception)
+        # The process may already have been picked up by the daemon and put in the waiting state, before the subscriber
+        # got the chance to attach itself, making it have missed the broadcast. That's why check if the state is already
+        # waiting, and if not, we run the loop of the runner to start waiting for the broadcast message. To make sure
+        # that we have the latest state of the node as it is in the database, we force refresh it by reloading it.
+        calc = load_node(calc.pk)
+        if calc.process_state != plumpy.ProcessState.WAITING:
+            self.runner.loop.run_sync(lambda: with_timeout(waiting_future))
 
-            result = self.cli_runner.invoke(cmd_process.process_play, [str(calc.pk)])
+        # Here we now that the process is with the daemon runner and in the waiting state so we can starting running
+        # the `verdi process` commands that we want to test
+        result = self.cli_runner.invoke(cmd_process.process_pause, ['--wait', str(calc.pk)])
+        self.assertIsNone(result.exception, result.exception)
+        self.assertTrue(calc.paused)
 
-            self.assertFalse(calc.paused)
-            self.assertIsNone(result.exception)
+        result = self.cli_runner.invoke(cmd_process.process_play, ['--wait', str(calc.pk)])
+        self.assertIsNone(result.exception, result.exception)
+        self.assertFalse(calc.paused)
 
-            result = self.cli_runner.invoke(cmd_process.process_kill, [str(calc.pk)])
+        result = self.cli_runner.invoke(cmd_process.process_kill, ['--wait', str(calc.pk)])
+        self.assertIsNone(result.exception, result.exception)
+        self.assertTrue(calc.is_terminated)
+        self.assertTrue(calc.is_killed)
 
-            self.assertTrue(calc.is_terminated)
-            self.assertTrue(calc.is_killed)
-            self.assertIsNone(result.exception)
-        finally:
-            self.daemon_runner.stop()
-            executor.shutdown()
+
+@gen.coroutine
+def with_timeout(what, timeout=5.0):
+    raise gen.Return((yield gen.with_timeout(datetime.timedelta(seconds=timeout), what)))

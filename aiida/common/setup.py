@@ -387,20 +387,32 @@ key_explanation = {
 
 
 def profile_exists(profile):
-    '''return True if profile exists, else return False'''
+    """return True if profile exists, else return False"""
     config = get_or_create_config()
     profiles = config.get('profiles', {})
     return profile in profiles
 
 
+def get_profile(profile_name):
+    """
+    Return the profile with the given name or None if it does not exist
+
+    :param profile_name: the name of the profile to return
+    :return: profile dictionary or None if it does not exist
+    """
+    config = get_or_create_config()
+    profiles = config.get('profiles', {})
+    return profiles.get(profile_name, None)
+
+
 def update_config(settings, write=True):
-    '''
+    """
     back up the config file, create or change config.
 
     :param settings: dictionary with the new or changed configuration
     :param write: if False, do not touch the config file (dryrun)
     :return: the new / changed configuration
-    '''
+    """
     config = get_or_create_config()
     config.update(settings)
     if write:
@@ -410,14 +422,14 @@ def update_config(settings, write=True):
 
 
 def update_profile(profile, updates, write=True):
-    '''
+    """
     back up the config file, create or changes profile
 
     :param profile: name of the profile
     :param updates: dictionary with the new or changed profile
     :param write: if False, do not touch the config file (dryrun)
     :return: the new / changed profile
-    '''
+    """
     config = get_or_create_config()
     config['profiles'] = config.get('profiles', {})
     profiles = config['profiles']
@@ -429,17 +441,17 @@ def update_profile(profile, updates, write=True):
 
 
 def create_config_noninteractive(profile='default', force_overwrite=False, dry_run=False, **kwargs):
-    '''
+    """
     Non-interactively creates a profile.
     :raises: a ValueError if the profile exists.
     :raises: a ValueError if one of the values not a valid input
     :param profile: The profile to be configured
     :param values: The configuration inputs
     :return: The populated profile that was also stored
-    '''
-    if profile_exists(profile) and not force_overwrite:
-        raise ValueError(('profile {profile} exists! '
-                          'Cannot non-interactively edit a profile.').format(profile=profile))
+    """
+    current_profile = get_profile(profile)
+    if current_profile and not force_overwrite:
+        raise ValueError(('profile {profile} exists! Cannot non-interactively edit a profile.').format(profile=profile))
 
     new_profile = {}
 
@@ -480,8 +492,11 @@ def create_config_noninteractive(profile='default', force_overwrite=False, dry_r
             os.umask(old_umask)
     new_profile['AIIDADB_REPOSITORY_URI'] = 'file://' + repo_path
 
-    # Generate the profile uuid
-    new_profile[PROFILE_UUID_KEY] = generate_new_profile_uuid()
+    # Generate a new profile UUID or get it from the existing profile that is being overwritten
+    if current_profile:
+        new_profile[PROFILE_UUID_KEY] = current_profile.get(PROFILE_UUID_KEY, generate_new_profile_uuid())
+    else:
+        new_profile[PROFILE_UUID_KEY] = generate_new_profile_uuid()
 
     # finalizing
     write = not dry_run
@@ -769,6 +784,8 @@ class _NoDefaultValue(object):
 # 4. The default value, if no setting is found
 # 5. A list of valid values, or None if no such list makes sense
 _property_table = {
+    "runner.poll.interval": ("runner_poll_interval", "int", "The polling interval in seconds to be used by process runners",
+                       1, None),
     "daemon.timeout": ("daemon_timeout", "int", "The timeout in seconds for calls to the circus client",
                        DEFAULT_DAEMON_TIMEOUT, None),
     "verdishell.modules": ("modules_for_verdi_shell", "string",
@@ -795,6 +812,9 @@ _property_table = {
     "logging.plumpy_loglevel":
     ("logging_plumpy_log_level", "string", "Minimum level to log to the file ~/.aiida/daemon/log/aiida_daemon.log "
      "for the 'plumpy' logger", "WARNING", ["CRITICAL", "ERROR", "WARNING", "REPORT", "INFO", "DEBUG"]),
+    "logging.kiwipy_loglevel":
+    ("logging_kiwipy_log_level", "string", "Minimum level to log to the file ~/.aiida/daemon/log/aiida_daemon.log "
+     "for the 'kiwipy' logger", "WARNING", ["CRITICAL", "ERROR", "WARNING", "REPORT", "INFO", "DEBUG"]),
     "logging.paramiko_loglevel":
     ("logging_paramiko_log_level", "string", "Minimum level to log to the file ~/.aiida/daemon/log/aiida_daemon.log "
      "for the 'paramiko' logger", "WARNING", ["CRITICAL", "ERROR", "WARNING", "REPORT", "INFO", "DEBUG"]),

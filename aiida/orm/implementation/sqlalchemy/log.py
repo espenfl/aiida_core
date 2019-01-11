@@ -78,11 +78,11 @@ class SqlaLogCollection(LogCollection):
 
         return [SqlaLog(entry) for entry in entries]
 
-    def delete_many(self, filter):
+    def delete_many(self, filters):
         """
         Delete all log entries in the table
         """
-        if not filter:
+        if not filters:
             for entry in DbLog.query.all():
                 entry.delete()
             session.commit()
@@ -105,7 +105,7 @@ class SqlaLog(Log):
         """
         Get the primary key of the entry
         """
-        return self._model.objpk
+        return self._model.id
 
     @property
     def time(self):

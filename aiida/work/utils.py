@@ -23,7 +23,7 @@ from aiida.common.links import LinkType
 from aiida.orm.calculation import Calculation, WorkCalculation, FunctionCalculation
 from aiida.orm.data.frozendict import FrozenDict
 
-__all__ = []
+__all__ = 'RefObjectStore', 'interruptable_task', 'InterruptableFuture'
 
 LOGGER = logging.getLogger(__name__)
 PROCESS_STATE_CHANGE_KEY = 'process|state_change|{}'

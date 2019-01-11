@@ -7,108 +7,68 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
-# pylint: disable=global-statement
+# pylint: disable=cyclic-import,global-statement
 """Runners that can run and submit processes."""
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 from collections import namedtuple
-from contextlib import contextmanager
 import logging
+import plumpy
 import tornado.ioloop
 
-import plumpy
-
 from aiida.orm import load_node, load_workflow
+from aiida.work.processes import instantiate_process
 from . import job_calcs
 from . import futures
-from . import persistence
-from . import rmq
 from . import transports
 from . import utils
 
-__all__ = ['Runner', 'DaemonRunner', 'new_runner', 'set_runner', 'get_runner']
+__all__ = ('Runner',)
+
+LOGGER = logging.getLogger(__name__)
 
 ResultAndNode = namedtuple('ResultAndNode', ['result', 'node'])
 ResultAndPid = namedtuple('ResultAndPid', ['result', 'pid'])
-
-RUNNER = None
-
-
-def new_runner(**kwargs):
-    """
-    Create a default runner optionally passing keyword arguments
-
-    :param kwargs: arguments to be passed to Runner constructor
-    :return: a new runner instance
-    """
-    if 'rmq_config' not in kwargs:
-        kwargs['rmq_config'] = rmq.get_rmq_config()
-
-    return Runner(**kwargs)
-
-
-def get_runner():
-    """
-    Get the global runner instance
-
-    :returns: the global runner
-    """
-    global RUNNER
-    if RUNNER is None or RUNNER.is_closed():
-        RUNNER = new_runner()
-    return RUNNER
-
-
-def set_runner(runner):
-    """
-    Set the global runner instance
-
-    :param runner: the runner instance to set as the global runner
-    """
-    global RUNNER
-    RUNNER = runner
 
 
 class Runner(object):
     """Class that can launch processes by running in the current interpreter or by submitting them to the daemon."""
 
     _persister = None
-    _rmq_connector = None
     _communicator = None
+    _controller = None
     _closed = False
 
-    # pylint: disable=too-many-arguments
-    def __init__(self,
-                 rmq_config=None,
-                 poll_interval=0.,
-                 loop=None,
-                 rmq_submit=False,
-                 enable_persistence=True,
-                 persister=None):
+    def __init__(self, poll_interval=0, loop=None, communicator=None, rmq_submit=False, persister=None):
+        """
+        Construct a new runner
+
+        :param poll_interval: interval in seconds between polling for status of active calculations
+        :param loop: an event loop to use, if none is suppled a new one will be created
+        :type loop: :class:`tornado.ioloop.IOLoop`
+        :param communicator: the communicator to use
+        :type communicator: :class:`kiwipy.Communicator`
+        :param rmq_submit: if True, processes will be submitted to RabbitMQ, otherwise they will be scheduled here
+        :param persister: the persister to use to persist processes
+        :type persister: :class:`plumpy.Persister`
+        """
+        assert not (rmq_submit and persister is None), \
+            'Must supply a persister if you want to submit using communicator'
+
         self._loop = loop if loop is not None else tornado.ioloop.IOLoop()
         self._poll_interval = poll_interval
         self._rmq_submit = rmq_submit
         self._transport = transports.TransportQueue(self._loop)
         self._job_manager = job_calcs.JobManager(self._transport)
+        self._persister = persister
 
-        if enable_persistence:
-            self._persister = persister if persister is not None else persistence.AiiDAPersister()
-
-        if rmq_config is not None:
-            self._setup_rmq(**rmq_config)
+        if communicator is not None:
+            self._communicator = communicator
+            self._controller = plumpy.RemoteProcessThreadController(communicator)
         elif self._rmq_submit:
-            logger = logging.getLogger(__name__)
-            logger.warning('Disabling rmq submission, no RMQ config provided')
+            LOGGER.warning('Disabling RabbitMQ submission, no communicator provided')
             self._rmq_submit = False
-
-        # Save kwargs for creating child runners
-        self._kwargs = {
-            'rmq_config': rmq_config,
-            'poll_interval': poll_interval,
-            'rmq_submit': rmq_submit,
-            'enable_persistence': enable_persistence
-        }
 
     def __enter__(self):
         return self
@@ -118,11 +78,13 @@ class Runner(object):
 
     @property
     def loop(self):
-        return self._loop
+        """
+        Get the event loop of this runner
 
-    @property
-    def rmq(self):
-        return self._rmq
+        :return: the event loop
+        :rtype: :class:`tornado.ioloop.IOLoop`
+        """
+        return self._loop
 
     @property
     def transport(self):
@@ -134,11 +96,21 @@ class Runner(object):
 
     @property
     def communicator(self):
+        """
+        Get the communicator used by this runner
+
+        :return: the communicator
+        :rtype: :class:`kiwipy.Communicator`
+        """
         return self._communicator
 
     @property
     def job_manager(self):
         return self._job_manager
+
+    @property
+    def controller(self):
+        return self._controller
 
     def is_closed(self):
         return self._closed
@@ -157,57 +129,10 @@ class Runner(object):
             return self._loop.run_sync(lambda: future)
 
     def close(self):
-        """Close the runner by stopping the loop and disconnecting the RmqConnector if it has one."""
+        """Close the runner by stopping the loop."""
         assert not self._closed
-
         self.stop()
-
-        if self._rmq_connector is not None:
-            self._rmq_connector.disconnect()
-
         self._closed = True
-
-    def instantiate_process(self, process, *args, **inputs):
-        """
-        Return an instance of the process with the given runner and inputs. The function can deal with various types
-        of the `process`:
-
-            * Process instance: will simply return the instance
-            * JobCalculation class: will construct the JobProcess and instantiate it
-            * ProcessBuilder instance: will instantiate the Process from the class and inputs defined within it
-            * Process class: will instantiate with the specified inputs
-
-        If anything else is passed, a ValueError will be raised
-
-        :param self: instance of a Runner
-        :param process: Process instance or class, JobCalculation class or ProcessBuilder instance
-        :param inputs: the inputs for the process to be instantiated with
-        """
-        from aiida.orm.calculation.job import JobCalculation
-        from aiida.work.process_builder import ProcessBuilder
-        from aiida.work.processes import Process
-
-        if isinstance(process, Process):
-            assert not args
-            assert not inputs
-            assert self is process.runner
-            return process
-
-        if isinstance(process, ProcessBuilder):
-            builder = process
-            process_class = builder.process_class
-            inputs.update(**builder)
-        elif issubclass(process, JobCalculation):
-            process_class = process.process()
-        elif issubclass(process, Process):
-            process_class = process
-        else:
-            raise ValueError('invalid process {}, needs to be Process, JobCalculation or ProcessBuilder'.format(
-                type(process)))
-
-        process = process_class(runner=self, inputs=inputs)
-
-        return process
 
     def submit(self, process, *args, **inputs):
         """
@@ -221,15 +146,30 @@ class Runner(object):
         assert not utils.is_workfunction(process), 'Cannot submit a workfunction'
         assert not self._closed
 
-        process = self.instantiate_process(process, *args, **inputs)
+        process = instantiate_process(self, process, *args, **inputs)
+
         if self._rmq_submit:
             self.persister.save_checkpoint(process)
             process.close()
-            self.rmq.continue_process(process.pid)
+            self.controller.continue_process(process.pid, nowait=False, no_reply=True)
         else:
-            # Run in this runner
             self.loop.add_callback(process.step_until_terminated)
 
+        return process.calc
+
+    def schedule(self, process, *args, **inputs):
+        """
+        Schedule a process to be executed by this runner
+
+        :param process: the process class to submit
+        :param inputs: the inputs to be passed to the process
+        :return: the calculation node of the process
+        """
+        assert not utils.is_workfunction(process), 'Cannot submit a workfunction'
+        assert not self._closed
+
+        process = instantiate_process(self, process, *args, **inputs)
+        self.loop.add_callback(process.step_until_terminated)
         return process.calc
 
     def _run(self, process, *args, **inputs):
@@ -248,7 +188,7 @@ class Runner(object):
             return result, node
 
         with utils.loop_scope(self.loop):
-            process = self.instantiate_process(process, *args, **inputs)
+            process = instantiate_process(self, process, *args, **inputs)
             process.execute()
             return process.outputs, process.calc
 
@@ -317,46 +257,6 @@ class Runner(object):
         """
         return futures.CalculationFuture(pk, self._loop, self._poll_interval, self._communicator)
 
-    @contextmanager
-    def child_runner(self):
-        """
-        Contextmanager that will yield a runner that is a child of this runner
-
-        :returns: a Runner instance that inherits the attributes of this runner
-        """
-        runner = self._create_child_runner()
-        try:
-            yield runner
-        finally:
-            runner.close()
-
-    def _setup_rmq(self, url, prefix=None, task_prefetch_count=None, testing_mode=False):
-        """
-        Setup the RabbitMQ connection by creating a connector, communicator and control panel
-
-        :param url: the url to use for the connector
-        :param prefix: the rmq prefix to use for the communicator
-        :param task_prefetch_count: the maximum number of tasks the communicator may retrieve at a given time
-        :param testing_mode: whether to create a communicator in testing mode
-        """
-        self._rmq_connector = plumpy.rmq.RmqConnector(amqp_url=url, loop=self._loop)
-
-        self._rmq_communicator = plumpy.rmq.RmqCommunicator(
-            self._rmq_connector,
-            exchange_name=rmq.get_message_exchange_name(prefix),
-            task_queue=rmq.get_launch_queue_name(prefix),
-            testing_mode=testing_mode,
-            task_prefetch_count=task_prefetch_count)
-
-        self._rmq = rmq.ProcessControlPanel(prefix=prefix, rmq_connector=self._rmq_connector, testing_mode=testing_mode)
-        self._communicator = self._rmq.communicator
-
-        # Establish RMQ connection
-        self._communicator.connect()
-
-    def _create_child_runner(self):
-        return Runner(**self._kwargs)
-
     def _poll_legacy_wf(self, workflow, callback):
         if workflow.has_finished_ok() or workflow.has_failed():
             self._loop.add_callback(callback, workflow.pk)
@@ -368,24 +268,3 @@ class Runner(object):
             self._loop.add_callback(callback, calc_node.pk)
         else:
             self._loop.call_later(self._poll_interval, self._poll_calculation, calc_node, callback)
-
-
-class DaemonRunner(Runner):
-    """
-    A sub class of Runner suited for a daemon runner
-    """
-
-    def __init__(self, *args, **kwargs):
-        kwargs['rmq_submit'] = True
-        super(DaemonRunner, self).__init__(*args, **kwargs)
-
-    def _setup_rmq(self, url, prefix=None, task_prefetch_count=None, testing_mode=False):
-        super(DaemonRunner, self)._setup_rmq(url, prefix, task_prefetch_count, testing_mode)
-
-        # Create a context for loading new processes
-        load_context = plumpy.LoadSaveContext(runner=self)
-
-        # Listen for incoming launch requests
-        task_receiver = rmq.ProcessLauncher(
-            loop=self.loop, persister=self.persister, load_context=load_context, loader=persistence.get_object_loader())
-        self.communicator.add_task_subscriber(task_receiver)

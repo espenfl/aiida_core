@@ -7,21 +7,20 @@
 # For further information on the license, see the LICENSE.txt file        #
 # For further information please visit http://www.aiida.net               #
 ###########################################################################
+# pylint: disable=cyclic-import
 """Futures that can poll or receive broadcasted messages while waiting for a task to be completed."""
 from __future__ import division
 from __future__ import print_function
 from __future__ import absolute_import
 import tornado.gen
 
-import kiwipy
 import plumpy
+import kiwipy
 
-__all__ = ['Future', 'CalculationFuture']
-
-Future = plumpy.Future
+__all__ = ('CalculationFuture',)
 
 
-class CalculationFuture(Future):
+class CalculationFuture(plumpy.Future):
     """
     A future that waits for a calculation to complete using both polling and
     listening for broadcast events if possible

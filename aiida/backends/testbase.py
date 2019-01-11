@@ -22,6 +22,7 @@ from aiida.backends import settings
 from aiida.backends.tests import get_db_test_list
 from aiida.common.exceptions import ConfigurationError, TestsNotAllowedError, InternalError
 from aiida.common.utils import classproperty
+from aiida import work
 
 
 def check_if_tests_can_run():
@@ -87,7 +88,7 @@ class AiidaTestCase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls, *args, **kwargs):
-        from aiida.orm.backend import construct_backend
+        from aiida.orm.backends import construct_backend
 
         # Note: this will raise an exception, that will be seen as a test
         # failure. To be safe, you should do the same check also in the tearDownClass
@@ -111,6 +112,7 @@ class AiidaTestCase(unittest.TestCase):
         self.__backend_instance.tearDown_method()
         # Clean up the loop we created in set up.
         # Call this after the instance tear down just in case it uses the loop
+        work.AiiDAManager.reset()
         loop = ioloop.IOLoop.current()
         if not loop._closing:
             loop.close()

@@ -115,6 +115,8 @@ py:class  click.types.IntParamType
 py:class  click.types.StringParamType
 py:class  click.types.Path
 
+py:class  concurrent.futures._base.TimeoutError
+
 py:class  distutils.version.Version
 
 py:class  docutils.parsers.rst.Directive
@@ -141,28 +143,34 @@ py:class  plumpy.process_comms.ProcessLauncher
 py:class  plumpy.process_spec.ProcessSpec
 py:class  plumpy.Process
 py:class  plumpy.Communicator
+py:class  plumpy.RemoteProcessThreadController
 py:class  plumpy.Bundle
 py:class  plumpy.workchains.WorkChainSpec
+py:class  plumpy.Persister
 py:class  plumpy.persistence.Persister
+py:class  plumpy.PersistenceError
 py:class  plumpy.ports.Port
 py:class  plumpy.ports.InputPort
 py:class  plumpy.ports.PortNamespace
 py:class  plumpy.utils.AttributesDict
 py:class  plumpy.loaders.DefaultObjectLoader
 py:class  plumpy.ObjectLoader
+py:class  plumpy.process_comms.RemoteProcessThreadController
 py:exc    plumpy.TaskRejected
 py:meth   plumpy.process_spec.ProcessSpec.expose_inputs
 py:meth   plumpy.process_spec.ProcessSpec.expose_outputs
 
 py:class  kiwipy.futures.Future
 py:class  kiwipy.communications.TimeoutError
+py:class  kiwipy.Communicator
+py:class  kiwipy.rmq.communicator.RmqThreadCommunicator
+
+py:class  topika.Connection
 
 py:class  tornado.ioloop.IOLoop
 py:class  tornado.concurrent.Future
 
 py:class  IPython.core.magic.Magics
-
-#py:class  json.json
 
 py:class  HTMLParser.HTMLParser
 py:class  html.parser.HTMLParser
@@ -170,6 +178,7 @@ py:class  html.parser.HTMLParser
 py:class  tuple
 
 py:class  staticmethod
+
 
 py:class  django.contrib.auth.models.AbstractBaseUser
 py:class  django.contrib.auth.models.BaseUserManager
@@ -204,5 +213,11 @@ py:meth   aiida.orm.group.Group.get_from_string
 
 py:mod    click
 py:class  click.Choice
-
 py:func   click.Option.get_default
+
+py:class yaml.Dumper
+py:class yaml.Loader
+py:class yaml.dumper.Dumper
+py:class yaml.loader.Loader
+
+py:class uuid.UUID

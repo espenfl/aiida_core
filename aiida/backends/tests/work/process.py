@@ -66,7 +66,7 @@ class TestProcessNamespace(AiidaTestCase):
 
 class ProcessStackTest(work.Process):
     @override
-    def _run(self):
+    def run(self):
         pass
 
     @override
@@ -86,7 +86,6 @@ class TestProcess(AiidaTestCase):
 
     def setUp(self):
         super(TestProcess, self).setUp()
-        work.runners.set_runner(None)
         self.assertIsNone(Process.current())
 
     def tearDown(self):

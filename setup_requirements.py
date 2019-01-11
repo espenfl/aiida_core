@@ -26,7 +26,7 @@ install_requires = [
     'meld3==1.0.2',
     'mock==2.0.0',
     'numpy==1.14.3',
-    'SQLAlchemy==1.0.19',  # Upgrade to SQLalchemy 1.1.5 does break tests, see #465
+    'SQLAlchemy==1.2.12',
     'SQLAlchemy-Utils==0.33.0',
     'alembic==0.9.9',
     'ujson==1.35',
@@ -40,13 +40,11 @@ install_requires = [
     'tabulate==0.8.2',
     'ete3==3.1.1',
     'uritools==2.1.0',
-    'psycopg2-binary==2.7.4',
+    'psycopg2==2.7.6',
     'paramiko==2.4.2',
     'ecdsa==0.13',
     'ipython>=4.0,<6.0',  # Version of ipython non enforced, because some still prefer version 4 rather than the latest
-    'pika==0.12.0',
-    'plumpy==0.10.6',
-    'kiwipy==0.2.1',
+    'plumpy==0.11.4',
     'circus==0.14.0',
     'tornado==4.5.3',  # As of 2018/03/06 Tornado released v5.0 which breaks circus 0.14.0
     'pyblake2==1.1.2; python_version<"3.6"',
@@ -95,8 +93,8 @@ extras_require = {
         'pymatgen==2018.4.20',
         'ase==3.12.0',  # Updating breaks tests
         'PyMySQL==0.8.0',  # Required by ICSD tools
-        "PyCifRW==4.2.1; python_version < '3'", # Does not support python3
-        "PyCifRW==4.4; python_version >= '3'", # Does not support python2
+        "PyCifRW==4.2.1; python_version < '3'",  # Does not support python3
+        "PyCifRW==4.4; python_version >= '3'",  # Does not support python2
         'seekpath==1.8.1',
         'qe-tools==1.1.0',
     ],
