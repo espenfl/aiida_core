@@ -832,9 +832,7 @@ class StructureData(Data):
             self.cell = aseatoms.cell
             self.pbc = aseatoms.pbc
             self.clear_kinds()  # This also calls clear_sites
-            print("set_ase:")
             for atom in aseatoms:
-                print(atom)
                 self.append_atom(ase=atom)
         else:
             raise TypeError("The value is not an ase.Atoms object")
@@ -1466,7 +1464,6 @@ class StructureData(Data):
                                  "append_atom, you cannot pass any further"
                                  "parameter")
             position = aseatom.position
-            print('setting kind')
             kind = Kind(ase=aseatom)
         else:
             position = kwargs.pop('position', None)
@@ -2137,8 +2134,6 @@ class Kind(object):
 
             try:
                 import numpy
-                print('settings symbols')
-                print(aseatom.symbol)
                 self.set_symbols_and_weights([aseatom.symbol], [1.])
                 # ASE sets mass to numpy.nan for unstable species
                 if not numpy.isnan(aseatom.mass):
@@ -2149,14 +2144,10 @@ class Kind(object):
                 raise ValueError("Error using the aseatom object. Are you sure "
                                  "it is a ase.atom.Atom object? [Introspection says it is "
                                  "{}]".format(str(type(aseatom))))
-            print(aseatom.symbol, aseatom.tag)
             if aseatom.tag != 0:
-                print('setting automatic kind name with tag')
-                print(aseatom.tag)
                 self.set_automatic_kind_name(tag=aseatom.tag)
                 self._internal_tag = aseatom.tag
             else:
-                print('setting automatic kind name without tag')
                 self.set_automatic_kind_name()
         else:
             if 'symbols' not in kwargs:
